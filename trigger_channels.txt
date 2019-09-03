@@ -1,0 +1,22 @@
+nat_stay_C	17
+nat_stay_E	18
+nat_switch_C	19
+nat_switch_E	20
+nat_single_C	21
+nat_single_E	22
+	
+art_stay_C	23
+art_stay_E	24
+art_switch_C	25
+art_switch_E	26
+art_single_C	27
+art_single_E	28
+	
+bi_stay_C	37
+bi_stay_E	38
+bi_switch_C	39
+bi_switch_E	40
+bi_single_C	41
+bi_single_E	42
+	
+All fillers	47
