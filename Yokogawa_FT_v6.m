@@ -31,7 +31,7 @@ global SubjectID;
 % find all subject folders containing raw MEG recording
 SubjectIDs = [dir([DataFolder 'A*']); dir([DataFolder 'B*'])];
 SubjectIDs = {SubjectIDs.name}; % extract the names into a cell array
-%SubjectIDs = {'A02-LZ-3498'}; % or manually select which subjects to process
+%SubjectIDs = {'B02-YW-3523'}; % or manually select which subjects to process
 
 
 % === Settings ===
@@ -61,7 +61,8 @@ DO_PCA = false; % if subjects produced vocal responses, set this to true
 
 % when running many subjects in one batch, process all auto steps until the first manual step
 RUN_UP_TO_DETRENDING = false;
-RUN_UP_TO_ICA = true; 
+RUN_UP_TO_MANUAL_ARTEFACT = false;  % 1st manual processing
+RUN_UP_TO_ICA = true;               % 2nd manual processing
 
 % > other options:
 CHANNEL_REPAIR = false; % repair bad/rejected channels?
@@ -163,6 +164,10 @@ for i = 1:length(SubjectIDs)
         end
         
         
+        % Print out SubjectID so we know which subject we are working on
+        fprintf(['\nCURRENT SUBJECT: ' SubjectID '\n\n']); 
+
+        
         % >>>
         % Step 3: manually mark artefacts
         output_file = [output_path 'arft.mat'];
@@ -204,6 +209,11 @@ for i = 1:length(SubjectIDs)
             alldata                     = ft_selectdata(cfg, alldata);
         end
 
+        % If running in batch, skip to next subject now
+        if (RUN_UP_TO_MANUAL_ARTEFACT)
+            continue;
+        end        
+        
         
         % >>>
         % Step 5: ICA
