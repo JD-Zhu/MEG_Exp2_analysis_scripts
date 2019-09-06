@@ -3,7 +3,7 @@
 
 function [data_clean] = ICA_reject_comps(data, comp, lay)
 
-    % Plot the ICA components, so we can identify which comps to remove
+    %% Plot the ICA components, so we can identify which comps to remove
 
     % change the colourmap
     ft_hastoolbox('brewermap', 1);         % ensure this toolbox is on the path
@@ -22,10 +22,21 @@ function [data_clean] = ICA_reject_comps(data, comp, lay)
     cfg.blocksize = 60; % display 60-sec segments
     cfg.layout   = lay;
     ft_databrowser(cfg, comp);
-    drawnow; pause;
     
     
-    % Remove components
+    %% For quality check: plot the continuous data BEFORE rejecting comps
+    cfg          = [];
+    cfg.channel  = 'all'; % components to be plotted
+    cfg.viewmode = 'vertical';
+    cfg.blocksize = 60; % display 60-sec segments
+    cfg.ylim     = [ -5e-13 5e-13 ];
+    cfg.layout   = lay;
+    ft_databrowser(cfg, data);
+    
+    drawnow;
+    
+    
+    %% Remove components
     diary on;
     success = false;
     
@@ -40,17 +51,13 @@ function [data_clean] = ICA_reject_comps(data, comp, lay)
         data_clean    = ft_rejectcomponent(cfg, comp, data);
 
 
-        % Quality check: plot the continuous data BEFORE and AFTER rejecting comps
+        % For quality check: plot the continuous data AFTER rejecting comps
         cfg          = [];
         cfg.channel  = 'all'; % components to be plotted
         cfg.viewmode = 'vertical';
         cfg.blocksize = 60; % display 60-sec segments
         cfg.ylim     = [ -5e-13 5e-13 ];
         cfg.layout   = lay;
-
-        % plot BEFORE
-        ft_databrowser(cfg, data);
-        % plot AFTER
         ft_databrowser(cfg, data_clean);
         drawnow;
 

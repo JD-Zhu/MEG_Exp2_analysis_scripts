@@ -56,13 +56,13 @@ DO_HPF = false;
 DO_DETREND = false;
 DO_ICA = true; % if we used human subjects (i.e. not dry run), set this to true
 RUN_ICA_ON_1HZ_FILTERED_DATA = false; % for MEG, we prob don't need to apply 1Hz HPF before running ICA
-DO_BEH_CHECK = true; % if subjects produced beh responses, set this to true
+DO_BEH_CHECK = false; % if subjects produced beh responses, set this to true
 DO_PCA = false; % if subjects produced vocal responses, set this to true
 
 % when running many subjects in one batch, process all auto steps until the first manual step
 RUN_UP_TO_DETRENDING = false;
 RUN_UP_TO_MANUAL_ARTEFACT = false;  % 1st manual processing
-RUN_UP_TO_ICA = true;               % 2nd manual processing
+RUN_UP_TO_ICA = false;               % 2nd manual processing
 
 % > other options:
 CHANNEL_REPAIR = false; % repair bad/rejected channels?
