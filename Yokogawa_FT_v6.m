@@ -60,9 +60,10 @@ DO_BEH_CHECK = false; % if subjects produced beh responses, set this to true
 DO_PCA = false; % if subjects produced vocal responses, set this to true
 
 % when running many subjects in one batch, process all auto steps until the first manual step
-RUN_UP_TO_DETRENDING = false;
-RUN_UP_TO_MANUAL_ARTEFACT = false;  % 1st manual processing
-RUN_UP_TO_ICA = false;               % 2nd manual processing
+RUN_UP_TO_BEFORE_MANUAL_ARTEFACT = false;   % before 1st manual processing
+RUN_UP_TO_AFTER_MANUAL_ARTEFACT = false;    % after 1st manual processing
+RUN_UP_TO_BEFORE_ICA = false;               % before 2nd manual processing
+RUN_UP_TO_AFTER_ICA = true;                 % after 2nd manual processing
 
 % > other options:
 CHANNEL_REPAIR = false; % repair bad/rejected channels?
@@ -159,7 +160,7 @@ for i = 1:length(SubjectIDs)
         end
         
         % If running in batch, skip to next subject now
-        if (RUN_UP_TO_DETRENDING)
+        if (RUN_UP_TO_BEFORE_MANUAL_ARTEFACT)
             continue;
         end
         
@@ -210,7 +211,7 @@ for i = 1:length(SubjectIDs)
         end
 
         % If running in batch, skip to next subject now
-        if (RUN_UP_TO_MANUAL_ARTEFACT)
+        if (RUN_UP_TO_AFTER_MANUAL_ARTEFACT)
             continue;
         end        
         
@@ -240,7 +241,7 @@ for i = 1:length(SubjectIDs)
                 end
 
                 % If running in batch, skip to next subject now
-                if (RUN_UP_TO_ICA)
+                if (RUN_UP_TO_BEFORE_ICA)
                     continue;
                 end
 
@@ -259,6 +260,11 @@ for i = 1:length(SubjectIDs)
             alldata_afterICA = alldata;
         end
         
+        % If running in batch, skip to next subject now
+        if (RUN_UP_TO_AFTER_ICA)
+            continue;
+        end
+        
         
         % >>>
         % Step 6: Epoching
@@ -271,8 +277,10 @@ for i = 1:length(SubjectIDs)
             cfg.dataset           = rawfile;
             cfg.continuous        = 'yes';
             cfg.trialfun          = 'trig_fun_160_basic_v2';
-            cfg.trialdef.prestim  = 0.8;      % pre-stimulus interval
-            cfg.trialdef.poststim = 1;        % post-stimulus interval
+            cfg.trialdef.prestim  = 0.8;  % pre-stimulus interval
+            cfg.trialdef.poststim = 1;    % post-stimulus interval
+                      % We keep the full baseline here, so that we don't 
+                      % have to redo epoching for TFR analysis
             trialinfo_b = ft_definetrial(cfg);
 
             alldata_afterICA = ft_redefinetrial(trialinfo_b, alldata_afterICA);
