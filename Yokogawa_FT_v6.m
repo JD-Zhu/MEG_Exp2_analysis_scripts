@@ -31,7 +31,7 @@ global SubjectID;
 % find all subject folders containing raw MEG recording
 SubjectIDs = [dir([DataFolder 'A*']); dir([DataFolder 'B*'])];
 SubjectIDs = {SubjectIDs.name}; % extract the names into a cell array
-%SubjectIDs = {'B02-YW-3523'}; % or manually select which subjects to process
+%SubjectIDs = {'B11-LG-3564'}; % or manually select which subjects to process
 
 
 % === Settings ===
@@ -54,9 +54,9 @@ confile_name = ['*' run_name '.con'];
 % > which steps to run?
 DO_HPF = false;
 DO_DETREND = false;
-DO_ICA = true; % if we used human subjects (i.e. not dry run), set this to true
+DO_ICA = true; % if we tested human subjects (i.e. not "dry run"), set this to true
 RUN_ICA_ON_1HZ_FILTERED_DATA = false; % for MEG, we prob don't need to apply 1Hz HPF before running ICA
-DO_BEH_CHECK = false; % if subjects produced beh responses, set this to true
+DO_BEH_CHECK = true; % if subjects produced beh responses, set this to true
 DO_PCA = false; % if subjects produced vocal responses, set this to true
 
 % when running many subjects in one batch, process all auto steps until the first manual step

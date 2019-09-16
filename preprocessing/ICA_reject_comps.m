@@ -9,7 +9,7 @@ function [data_clean] = ICA_reject_comps(data, comp, lay)
     ft_hastoolbox('brewermap', 1);         % ensure this toolbox is on the path
     colormap(flipud(brewermap(64, 'RdBu'))) % change the colormap
     
-    figure;
+    figure; % this line is necessary, or else ft_topoplotIC won't plot
     cfg = [];
     cfg.component = 1:49; % this fits on 1 page      
     cfg.layout = lay;
