@@ -41,8 +41,8 @@ SubjectIDs = {SubjectIDs.name}; % extract the names into a cell array
 % > create a name for this run (this will be the name of the output folder)
 %run_name = 'hpfilt0.5';
 %run_name = 'raw';
-run_name = 'CALM6001';
-%run_name = 'TSPCA10000_3';
+%run_name = 'CALM6001';  % 'CALM10000';
+run_name = 'TSPCA10000_3';
 %run_name = 'detrend1000';
 output_name = ['output\\' run_name '\\']; % location to save intermediate output files inside each SubjectFolder
 ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all subjects
@@ -61,8 +61,8 @@ DO_PCA = false; % if subjects produced vocal responses, set this to true
 
 % when running many subjects in one batch, process all auto steps until the first manual step
 RUN_UP_TO_BEFORE_MANUAL_ARTEFACT = false;   % before 1st manual processing
-RUN_UP_TO_AFTER_MANUAL_ARTEFACT = false;    % after 1st manual processing
-RUN_UP_TO_BEFORE_ICA = false;               % before 2nd manual processing
+RUN_UP_TO_AFTER_MANUAL_ARTEFACT = true;    % after 1st manual processing
+RUN_UP_TO_BEFORE_ICA = true;               % before 2nd manual processing
 RUN_UP_TO_AFTER_ICA = true;                 % after 2nd manual processing
 
 % > other options:
