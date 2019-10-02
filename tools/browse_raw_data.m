@@ -1,5 +1,5 @@
 % select the raw file here
-rawfile = 'E:\Judy\Exp2_pilots\Pilot_stage3_newcues\6_MEG-data\RAW_DATA\B12-3475-new\3475_CD_ME180_2019_08_07_B1.con';            
+rawfile = 'E:\Judy\Exp2\6_MEG-data\RAW_DATA\A05-RW-3584\3584_RW_ME180_2019_09_24_B1-concat_TSPCA10000_3.con';            
 
 cfg                      = [];
 cfg.trialfun             = 'ft_trialfun_general';

@@ -29,7 +29,7 @@ function [data_clean] = ICA_reject_comps(data, comp, lay)
     cfg          = [];
     cfg.channel  = 'all'; % components to be plotted
     cfg.viewmode = 'vertical';
-    cfg.blocksize = 60; % display 60-sec segments
+    cfg.blocksize = 120; % display 120-sec segments
     cfg.ylim     = [ -5e-13 5e-13 ];
     cfg.layout   = lay;
     ft_databrowser(cfg, data);
@@ -56,7 +56,7 @@ function [data_clean] = ICA_reject_comps(data, comp, lay)
         cfg          = [];
         cfg.channel  = 'all'; % components to be plotted
         cfg.viewmode = 'vertical';
-        cfg.blocksize = 60; % display 60-sec segments
+        cfg.blocksize = 120; % display 120-sec segments
         cfg.ylim     = [ -5e-13 5e-13 ];
         cfg.layout   = lay;
         ft_databrowser(cfg, data_clean);

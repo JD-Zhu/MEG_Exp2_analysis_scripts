@@ -21,7 +21,7 @@ function RTs_crit_sorted = read_errorsheet_Exp2(SubjectID, context_name)
     
     errorsheet_folder = [pwd '\\..\\..\\6_MEG-data\\errorsheets\\' SubjectID '\\']; 
     errorsheet_file = [errorsheet_folder context_name '.csv']; % errorsheet from manual checking (crit trials only)
-    errorsheet_file_fillers = [errorsheet_file(1:end-4) '_fillers.csv']; % this errorsheet may or may not exist
+    errorsheet_file_fillers = [errorsheet_file(1:end-4) '_FILLERS.csv']; % this errorsheet may or may not exist
     
         
     % read in RT table
@@ -68,7 +68,7 @@ function RTs_crit_sorted = read_errorsheet_Exp2(SubjectID, context_name)
     % Step 2 (based on manual checking of filler errors) - for all errors
     % that occur on a filler trial, exclude the trial after
     if (exist(errorsheet_file_fillers, 'file') == 2) % check whether the filler errorsheet exists
-        fprintf([cell2mat(contexts(k)) ': filler errorsheet found\n']);
+        fprintf('  filler errorsheet found\n');
 
         errors_fillers = readtable(errorsheet_file_fillers); % if so, read it in
         errors_fillers_sorted = sortrows(errors_fillers, [1 2]); % sort the trials based on round_n then trial_n

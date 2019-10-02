@@ -27,6 +27,23 @@ function events_allBlocks = exclude_beh_errors(SubjectID, events_allBlocks)
         subtables.enstay = allCritTrials_table(enstay_rows,:);
         subtables.enswitch = allCritTrials_table(enswitch_rows,:);
 
+        % Special provisions for A07-WG-3509 (forgot to record at the
+        % beginning of the first ArtUni block, so the MEG data is missing 
+        % a few trials. Need to remove these trials from the error tables)
+        if (strcmp(SubjectID, 'A07-WG-3509') && strcmp(context_name, 'mixedLang_artuni'))
+            % sort each subtable (just in case it's not already sorted)
+            subtables.chstay = sortrows(subtables.chstay, [1 2]); 
+            subtables.chswitch = sortrows(subtables.chstay, [1 2]); 
+            subtables.enstay = sortrows(subtables.chstay, [1 2]); 
+            subtables.enswitch = sortrows(subtables.chstay, [1 2]); 
+            
+            % remove the trials that are missing from the MEG recording
+            subtables.chstay(1:2,:) = [];
+            subtables.chswitch(1,:) = [];
+            subtables.enstay(1,:) = [];
+            subtables.enswitch(1,:) = [];
+        end
+
         
         % Find the corresponding eventname for each subtable
         % (1) set the appropriate prefix according to the context name

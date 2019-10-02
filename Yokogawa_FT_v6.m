@@ -30,8 +30,11 @@ global SubjectID;
 
 % find all subject folders containing raw MEG recording
 SubjectIDs = [dir([DataFolder 'A*']); dir([DataFolder 'B*'])];
+%SubjectIDs = dir([DataFolder 'A*']); % only process Group A subjects
+%SubjectIDs = SubjectIDs([3 4 6]); % only process selected subjects
+
 SubjectIDs = {SubjectIDs.name}; % extract the names into a cell array
-%SubjectIDs = {'B11-LG-3564'}; % or manually select which subjects to process
+%SubjectIDs = {'A05-RW-3584'}; % or manually specify which subjects to process
 
 
 % === Settings ===
@@ -60,10 +63,10 @@ DO_BEH_CHECK = true; % if subjects produced beh responses, set this to true
 DO_PCA = false; % if subjects produced vocal responses, set this to true
 
 % when running many subjects in one batch, process all auto steps until the first manual step
-RUN_UP_TO_BEFORE_MANUAL_ARTEFACT = false;   % before 1st manual processing
-RUN_UP_TO_AFTER_MANUAL_ARTEFACT = true;    % after 1st manual processing
-RUN_UP_TO_BEFORE_ICA = true;               % before 2nd manual processing
-RUN_UP_TO_AFTER_ICA = true;                 % after 2nd manual processing
+RUN_UP_TO_BEFORE_MANUAL_ARTEFACT = false;   % auto processing before 1st manual step
+RUN_UP_TO_AFTER_MANUAL_ARTEFACT = false;    % perform 1st manual step (mark artefact)
+RUN_UP_TO_ICA = false;                      % auto processing before 2nd manual step (ICA component analysis)
+RUN_UP_TO_ICA_REJECTION = false;             % perform 2nd manual step (select ICA comps to reject)
 
 % > other options:
 CHANNEL_REPAIR = false; % repair bad/rejected channels?
@@ -175,6 +178,10 @@ for i = 1:length(SubjectIDs)
         
         % if haven't already processed this before, do it now & save a copy
         if (exist(output_file, 'file') ~= 2)   
+
+%DELETE THIS%
+%continue;
+
             [arft] = mark_artefact(alldata);
             save(output_file, 'arft', '-v7.3');
         else
@@ -204,11 +211,12 @@ for i = 1:length(SubjectIDs)
             save(output_file, 'selChLabel', '-v7.3');
         else
             load(output_file);
-            % remove the bad channels
-            cfg                         = [];
-            cfg.channel                 = selChLabel;
-            alldata                     = ft_selectdata(cfg, alldata);
         end
+
+        % remove the bad channels
+        cfg                         = [];
+        cfg.channel                 = selChLabel;
+        alldata                     = ft_selectdata(cfg, alldata);
 
         % If running in batch, skip to next subject now
         if (RUN_UP_TO_AFTER_MANUAL_ARTEFACT)
@@ -241,7 +249,7 @@ for i = 1:length(SubjectIDs)
                 end
 
                 % If running in batch, skip to next subject now
-                if (RUN_UP_TO_BEFORE_ICA)
+                if (RUN_UP_TO_ICA)
                     continue;
                 end
 
@@ -261,7 +269,7 @@ for i = 1:length(SubjectIDs)
         end
         
         % If running in batch, skip to next subject now
-        if (RUN_UP_TO_AFTER_ICA)
+        if (RUN_UP_TO_ICA_REJECTION)
             continue;
         end
         
@@ -282,6 +290,15 @@ for i = 1:length(SubjectIDs)
                       % We keep the full baseline here, so that we don't 
                       % have to redo epoching for TFR analysis
             trialinfo_b = ft_definetrial(cfg);
+            
+            % Special provisions for A07-WG-3509 (Presentation crashed
+            % shortly after starting the first ArtUni block. A few trials 
+            % had been recorded at the time of the crash. We restarted 
+            % the block, so need to remove these few trials.)
+            if strcmp(SubjectID, 'A07-WG-3509')
+                trialinfo_b.trl(383:390,:) = [];
+                trialinfo_b.event(383:390) = [];
+            end
 
             alldata_afterICA = ft_redefinetrial(trialinfo_b, alldata_afterICA);
             
@@ -561,7 +578,10 @@ for i = 1:length(SubjectIDs)
     if (CALC_UNCLEANED_ERF)
         %plot_ERF(erf, erf_clean, [], lay, true, true, false);
     else % clean erf only
-        plot_ERF([], erf_clean, erf_allconds, lay, false, true, true);
+        plot_ERF([], erf_clean, erf_allconds, lay, false, true, false);
+        
+        % save the plot as an image
+        %saveas(gcf, [ResultsFolder 'figures_GFP\\' run_name '\\' SubjectID '_GFP.png'])
     end    
     
 end
