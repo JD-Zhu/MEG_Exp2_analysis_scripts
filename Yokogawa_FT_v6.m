@@ -581,7 +581,10 @@ for i = 1:length(SubjectIDs)
         plot_ERF([], erf_clean, erf_allconds, lay, false, true, false);
         
         % save the plot as an image
-        %saveas(gcf, [ResultsFolder 'figures_GFP\\' run_name '\\' SubjectID '_GFP.png'])
+        png_output_file = [ResultsFolder 'figures_GFP\\' run_name '\\' SubjectID '_GFP.png'];
+        if (exist(png_output_file, 'file') ~= 2) 
+            saveas(gcf, png_output_file);
+        end
     end    
     
 end
