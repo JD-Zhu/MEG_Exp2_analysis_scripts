@@ -66,7 +66,7 @@ DO_PCA = false; % if subjects produced vocal responses, set this to true
 RUN_UP_TO_BEFORE_MANUAL_ARTEFACT = false;   % auto processing before 1st manual step
 RUN_UP_TO_AFTER_MANUAL_ARTEFACT = false;    % perform 1st manual step (mark artefact)
 RUN_UP_TO_ICA = false;                      % auto processing before 2nd manual step (ICA component analysis)
-RUN_UP_TO_ICA_REJECTION = false;             % perform 2nd manual step (select ICA comps to reject)
+RUN_UP_TO_ICA_REJECTION = true;             % perform 2nd manual step (select ICA comps to reject)
 
 % > other options:
 CHANNEL_REPAIR = false; % repair bad/rejected channels?

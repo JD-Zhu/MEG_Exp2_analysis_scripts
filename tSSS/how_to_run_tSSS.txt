@@ -1,0 +1,11 @@
+1. Make sure you have python3 and MNE installed.
+
+2. Open Anaconda Prompt.
+
+(1) "cd" to the directory containing the con files.
+
+(2) Type:
+python mq_con2fif_maxfilter.py -con 3388_ME180_2019_06_18_B2.con -elp 3388_ME180_2019_06_18.elp -mrk 3388_ME180_2019_06_18_ini.mrk -hsp 3388_ME180_2019_06_18.hsp
+
+3. The processed data will be saved in the same dir as .fif files. 
+Simply read the output files into FT using my script: load_fif_files_into_fieldtrip.m
