@@ -26,12 +26,12 @@ allSubjects_erf.cuechstay = {};
 allSubjects_erf.cuechswitch = {};
 allSubjects_erf.cueenstay = {};
 allSubjects_erf.cueenswitch = {};
-
+%{
 allSubjects_erf.targetchstay = {};
 allSubjects_erf.targetchswitch = {};
 allSubjects_erf.targetenstay = {};
 allSubjects_erf.targetenswitch = {};
-
+%}
 
 
 %% Read data
@@ -69,7 +69,10 @@ fprintf('\n= COMPUTING & PLOTTING CROSS-SUBJECT AVERAGES =\n');
 
 % CALCULATE the grand average (across all subjects) for each condition
 cfg = [];
-cfg.channel   = {'all', '-AG083', '-AG087', '-AG088', '-AG082', '-AG084', '-AG086', '-AG081', '-AG085', '-AG089'}; % remove sensors suffering from high-freq noise & trigger leaks
+cfg.channel   = {'all', '-AG101', '-AG122', '-AG007', '-AG103'}; % remove noisy sensors:
+                                                                % ch100 (AG101) is always noisy -> Remove for all ptps!
+                                                                % ch006 & ch102 also shows the same noise occasionally.
+                                                                % ch121 (AG122) tends to show square noise.
 cfg.latency   = 'all';
 cfg.parameter = 'avg';
 for j = 1:length(eventnames_8)
@@ -110,6 +113,7 @@ legend(eventnames_8(conds_target));
 cfg        = [];
 cfg.method = 'power';
 %cfg.channel = {'AG017', 'AG018', 'AG019', 'AG022', 'AG023', 'AG025', 'AG029', 'AG063', 'AG064', 'AG143'}; % 10 sig channels in cluster
+cfg.channel   = {'all', '-AG101', '-AG122', '-AG007', '-AG103'}; % remove noisy sensors (see above)
 for j = 1:length(eventnames_8)
     GA_erf_GFP.(eventnames_8{j}) = ft_globalmeanfield(cfg, GA_erf.(eventnames_8{j}));
 end
@@ -151,7 +155,7 @@ xlim([-0.1 0.75]);
 fprintf('\n= STATS: CLUSTER-BASED PERMUTATION TESTS =\n');
 
 cfg = [];
-cfg.channel = {'all', '-AG083', '-AG087', '-AG088', '-AG082', '-AG084', '-AG086', '-AG081', '-AG085', '-AG089'}; % {'MEG'};
+cfg.channel   = {'all', '-AG101', '-AG122', '-AG007', '-AG103'}; % remove noisy sensors (see above)
 load([ResultsFolder 'neighbours.mat']); % this is the sensor layout - it's the same for all subjects (even same across experiments). So just prepare once & save, then load here
 cfg.neighbours = neighbours;  % same as defined for the between-trials experiment
 
