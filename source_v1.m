@@ -60,7 +60,6 @@ function source_v1
     
     % filename for saving the ROI activity (stored in ResultsFolder_ROI for all subjects)
     ROI_output_filename = '_ROI.mat';
-
     
 
     %SubjectFolders = listFolders(DataFolder);
@@ -69,7 +68,7 @@ function source_v1
 
     
     %% each cycle processes one subject
-    for h = 1:length(SubjectFolders)
+    for h = 1:length(SubjectFolders)  %TODO: need to redo [6 12 17 19], MEMES did not find good MRI, was tilted!!
 
         SubjectID = SubjectFolders{h};
         SubjectFolder = [DataFolder, '\\', SubjectID];
@@ -153,7 +152,11 @@ function source_v1
             % if headmodel etc haven't been generated, do this now
             if ~exist([coreg_output 'headmodel.mat'], 'file')
                 MEMES3(pwd, elpfile, hspfile, confile, mrkfile, MRI_folder,...
-                    bad_coil, 'best', [0.99:0.01:1.01], 5, 'no')
+                    bad_coil, 'best', [0.99:0.01:1.01], 5, 'yes')
+                
+                % close the figures MEMES created (each subject creates 5
+                % figures - becomes too many when running in batch)
+                close all;
                 
                 % move the MEMES output into the coreg_output folder.
                 if ~exist(coreg_output, 'dir')
