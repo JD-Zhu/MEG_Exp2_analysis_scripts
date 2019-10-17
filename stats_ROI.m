@@ -17,20 +17,28 @@
 clear all;
 
 % run the #define section
-global conds_cue; global conds_target; global eventnames_8;
 global ResultsFolder_ROI; % all subjects' ROI data are stored here
-global PLOT_SHADE; global colours; % for plotting shaded boundary on each time course
+
+global eventnames_real; global colours_and_lineTypes; 
+global colours; global lineTypes;
+global PLOT_XLIM; global ROI_BASELINE;
+global PLOT_SHADE; % for plotting shaded boundary on each time course
 common();
+
+
+% SELECT which set of single-subject ERFs to use
+run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
+ResultsFolder_ROI_thisrun = [ResultsFolder_ROI run_name '\\'];
 
 
 %% Read data
 
-% find all .mat files in ResultsFolder_ROI
-files = dir([ResultsFolder_ROI '*_ROI.mat']);
+% find all .mat files in ResultsFolder_ROI_thisrun
+files = dir([ResultsFolder_ROI_thisrun '*_ROI.mat']);
 
 % each cycle reads in one '.mat' file (ie. one subject's ROI results)
 for i = 1:length(files)
-    filename = [ResultsFolder_ROI files(i).name];
+    filename = [ResultsFolder_ROI_thisrun files(i).name];
     load(filename);
     allSubjects_ROIs_bySubjects(i) = ROI_activity;
 end
@@ -41,7 +49,7 @@ ROIs_label = fieldnames(allSubjects_ROIs_bySubjects(1));
 % reformat allSubjects_ROIs: Subject|ROI|condition -> ROI|condition|Subjects
 for k = 1:length(ROIs_label)
     ROI_name = ROIs_label{k};
-    allSubjects_ROIs.(ROI_name) = allSubjects_reformat(allSubjects_ROIs_bySubjects, ROI_name, eventnames_8);
+    allSubjects_ROIs.(ROI_name) = allSubjects_reformat(allSubjects_ROIs_bySubjects, ROI_name, eventnames_real);
 %{
     for j = 1:length(eventnames_8) % 4 conditions in cue & 4 conditions in target (total 8)
        % if exist('allSubjects_ROI') % if var already exists, append to it
@@ -70,12 +78,12 @@ for k = 1:length(ROIs_label)
     cfg.channel   = {'all'}; % there is only one channel (i.e. the virtual sensor for this ROI)
     cfg.latency   = 'all';
     cfg.parameter = 'avg';
-    for j = 1:length(eventnames_8)
+    for j = 1:length(eventnames_real)
         cfg.keepindividual = 'no'; % average across subjects
-        GA_avg.(eventnames_8{j}) = ft_timelockgrandaverage(cfg, allSubjects_ROIs.(ROI_name).(eventnames_8{j}){:}); 
+        GA_avg.(eventnames_real{j}) = ft_timelockgrandaverage(cfg, allSubjects_ROIs.(ROI_name).(eventnames_real{j}){:}); 
         
         cfg.keepindividual = 'yes'; % do not average across subjects, keep the data for each individual subject
-        GA_keepindi.(eventnames_8{j}) = ft_timelockgrandaverage(cfg, allSubjects_ROIs.(ROI_name).(eventnames_8{j}){:});
+        GA_keepindi.(eventnames_real{j}) = ft_timelockgrandaverage(cfg, allSubjects_ROIs.(ROI_name).(eventnames_real{j}){:});
 
         % "{:}" means to use data from all elements of the variable
     end
@@ -103,8 +111,8 @@ for k = 1:length(ROIs_label)
     %}
 end
 
-save([ResultsFolder_ROI 'GA.mat'], 'GA');
-save([ResultsFolder_ROI 'GA_individuals.mat'], 'GA_indi');
+save([ResultsFolder_ROI_thisrun 'GA.mat'], 'GA');
+save([ResultsFolder_ROI_thisrun 'GA_individuals.mat'], 'GA_indi');
 
 
 %% Statistical analysis (to identify time interval of each effect, i.e. temporal clusters)
@@ -130,7 +138,7 @@ for k = 1:length(ROIs_label)
                             % (useful when you want to look at a particular component, e.g. to look at M100,
                             % cfg.latency = [0.08 0.12]; cfg.avgovertime = 'yes'; )
 
-    %load([ResultsFolder_ROI 'neighbours.mat']); % this is the sensor layout - it's the same for all subjects (even same across experiments). So just prepare once & save, then load here
+    %load([ResultsFolder_ROI_thisrun 'neighbours.mat']); % this is the sensor layout - it's the same for all subjects (even same across experiments). So just prepare once & save, then load here
     %cfg.neighbours = neighbours;  % same as defined for the between-trials experiment
 
     cfg.method = 'montecarlo'; %'analytic';
@@ -197,19 +205,19 @@ for k = 1:length(ROIs_label)
 
 end
 
-save([ResultsFolder_ROI 'stats.mat'], 'cue_interaction', 'cue_lang', 'cue_ttype', 'target_interaction', 'target_lang', 'target_ttype');
+save([ResultsFolder_ROI_thisrun 'stats.mat'], 'cue_interaction', 'cue_lang', 'cue_ttype', 'target_interaction', 'target_lang', 'target_ttype');
 
 
 %% Find the effects & plot them
 % Automatically check all the stats output & read out the time interval
 % of each effect (from the stat.mask field)
 
-stats = load([ResultsFolder_ROI 'stats.mat']);
-load([ResultsFolder_ROI 'GA.mat']);
-load([ResultsFolder_ROI 'GA_individuals.mat']);
+stats = load([ResultsFolder_ROI_thisrun 'stats.mat']);
+load([ResultsFolder_ROI_thisrun 'GA.mat']);
+load([ResultsFolder_ROI_thisrun 'GA_individuals.mat']);
 
 % make directory to store the output figures
-mkdir([ResultsFolder_ROI 'Figures\\non-sig\\']);
+mkdir([ResultsFolder_ROI_thisrun 'Figures\\non-sig\\']);
 
 ROIs_names = fieldnames(GA); % get the list of ROI names
 
@@ -221,8 +229,8 @@ cfg.feedback = 'no';
 cfg.baseline = [-0.1 0];
 for k = 1:length(ROIs_names) % each cycle handles one ROI
     ROI_name = ROIs_names{k};
-    for j = 1:length(eventnames_8)
-        GA.(ROI_name).(eventnames_8{j}) = ft_timelockbaseline(cfg, GA.(ROI_name).(eventnames_8{j})); 
+    for j = 1:length(eventnames_real)
+        GA.(ROI_name).(eventnames_real{j}) = ft_timelockbaseline(cfg, GA.(ROI_name).(eventnames_real{j})); 
     end
 end
 
@@ -249,43 +257,20 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
             figure('Name', [stat_name ' in ' ROI_name], 'Position', get(0, 'Screensize')); % make the figure full-screen size
             hold on;
             
-            if strcmp(stat_name(1:3), 'cue') % this effect occurs in cue window
-                
                 % each cycle plots 1 line (ie. 1 condition)
-                for j = conds_cue 
+                for j = 1:length(eventnames_real)
                     if strcmp(PLOT_SHADE, 'no') % do not plot shaded boundary, just plot a single line                  
-                        plot(GA.(ROI_name).(eventnames_8{j}).time, GA.(ROI_name).(eventnames_8{j}).avg);
+                        plot(GA.(ROI_name).(eventnames_real{j}).time, GA.(ROI_name).(eventnames_real{j}).avg);
                     else % calc the margin for shaded boundary (stdev / sem / CI) at every time point
-                        allsubjects = GA_indi.(ROI_name).(eventnames_8{j}).individual;
+                        allsubjects = GA_indi.(ROI_name).(eventnames_real{j}).individual;
                         margin = calc_margin(allsubjects, PLOT_SHADE);
                         
                         % plot time course with shaded boundary
-                        boundedline(GA.(ROI_name).(eventnames_8{j}).time, GA.(ROI_name).(eventnames_8{j}).avg, margin(:), 'alpha', 'transparency',0.15, colours(j));                        
+                        boundedline(GA.(ROI_name).(eventnames_real{j}).time, GA.(ROI_name).(eventnames_real{j}).avg, margin(:), 'alpha', 'transparency',0.15, colours(j));                        
                     end
                 end
                 
-                xlim([-0.1 0.75]); 
-                
-            elseif strcmp(stat_name(1:6), 'target') % this effect occurs in target window
-                
-                for j = conds_target
-                    if strcmp(PLOT_SHADE, 'no') % do not plot shaded boundary, just plot a single line                  
-                        plot(GA.(ROI_name).(eventnames_8{j}).time, GA.(ROI_name).(eventnames_8{j}).avg);
-                    else % calc the margin for shaded boundary (stdev / sem / CI) at every time point
-                        allsubjects = GA_indi.(ROI_name).(eventnames_8{j}).individual;
-                        margin = calc_margin(allsubjects, PLOT_SHADE);
-
-                        % plot time course with shaded boundary
-                        boundedline(GA.(ROI_name).(eventnames_8{j}).time, GA.(ROI_name).(eventnames_8{j}).avg, margin(:), 'alpha', 'transparency',0.15, colours(j));
-                    end                    
-                end
-                
-                xlim([-0.1 0.55]); 
-
-            else % should never be here
-                fprintf('Error: an effect is found, but its not in either cue nor target window.\n');
-            end
-            
+                xlim(PLOT_XLIM); 
             
             % set properties for axes, lines, and text
             xlabel('Seconds');
@@ -325,8 +310,8 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
                 %set(gcf, 'Position', get(0, 'Screensize'));
 
                 filename = [ROI_name '_' stat_name(1:3) '.png'];
-                %saveas(gcf, [ResultsFolder_ROI 'Figures\\non-sig\\' filename]); % this fn does not maintain the aspect ratio, font size, etc
-                export_fig(gcf, [ResultsFolder_ROI 'Figures\\non-sig\\' filename]); % use this tool to save the figure exactly as shown on screen
+                %saveas(gcf, [ResultsFolder_ROI_thisrun 'Figures\\non-sig\\' filename]); % this fn does not maintain the aspect ratio, font size, etc
+                export_fig(gcf, [ResultsFolder_ROI_thisrun 'Figures\\non-sig\\' filename]); % use this tool to save the figure exactly as shown on screen
 
             else % if there is any effect present, find all the clusters so we can output to console & mark on the plot
 
@@ -382,8 +367,8 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
                 
                 % save the figure
                 filename = [ROI_name '_' stat_name '.png'];
-                %saveas(gcf, [ResultsFolder_ROI 'Figures\\' filename]); % this fn does not maintain the aspect ratio, font size, etc
-                export_fig(gcf,[ResultsFolder_ROI 'Figures\\' filename]); % use this tool to save the figure exactly as shown on screen
+                %saveas(gcf, [ResultsFolder_ROI_thisrun 'Figures\\' filename]); % this fn does not maintain the aspect ratio, font size, etc
+                export_fig(gcf,[ResultsFolder_ROI_thisrun 'Figures\\' filename]); % use this tool to save the figure exactly as shown on screen
                 
                 % old code to check multiple clusters
                 %{

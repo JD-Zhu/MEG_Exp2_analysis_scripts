@@ -49,7 +49,7 @@ function plot_ERF (erf, erf_clean, erf_combined, lay, plot_uncleaned, plot_multi
     % (requires the list of 'cfg' assignments above, if running in console)
     if (plot_multiplot)
         %figure('Name','ft_multiplotER: erf_clean.cuechstay, erf_clean.cuechswitch, erf_clean.cueenstay, erf_clean.cueenswitch');
-        figure('Name','multiplot');
+        figure('Name','ft_multiplotER: erf_clean');
         cfg.xlim = PLOT_XLIM;
 
         % convert struct to cell array, then you can feed it in as 'varargin'

@@ -1,6 +1,29 @@
 function source_v1
+    % NOTE: always run from the "analysis_scripts" folder, to ensure all relative
+    % paths work as expected
+    cd('E:\Judy\Exp2\7_MEG-analysis\scripts');
+
+    addpath(pwd); % allow access to scripts in this folder even after we cd into each SubjectFolder
+    %addpath([pwd '\\coreg-master\\']); % allow access to coreg scripts
+
+    % run the #define section
+    global DataFolder; global ResultsFolder; global ResultsFolder_ROI; global ResultsFolder_Source;
+    global filename_suffix; 
+    global eventnames_real;
+    common();
+
+    % specify all paths as absolute paths here, because below we 'cd' into each
+    % subject folder & the relative path will no longer be correct
+    templates_dir = [pwd '\\..\\FT_templates\\']; % Location of the required templates (headmodel, grid & mri).
+                                           % These usually come with the FT toolbox, but for some reason 
+                                           % I don't have them (later found out: I had the "lite" version of FT).
+                                           % For ease of access (consistent path across computers), I've stored a copy here.                                  
+
+    % location of your MRI database (consistent relative path across computers)
+    MRI_path = [pwd '\\..\\..\\..\\MRI_databases\\'];
     
-    % = Settings =
+    
+    %% = Settings =
     % Please adjust as required:
 
     % run the source localisation (of sensor effects)?
@@ -18,11 +41,17 @@ function source_v1
     MEMES_VERSION = 'MEMES3';
 
     
+    % which preprocessing/ERF results to use?
+    run_name = 'TSPCA10000_3';
+    ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all subjects
+    ResultsFolder_ROI_thisrun = [ResultsFolder_ROI run_name '\\']; % ERF results for all subjects
+
+    
     % = Save files =
     
     % filename for saving the beamformer output (to avoid running the whole thing every time)
     %Beamformer_output_filename = 'beamformer_Chinese_PCAtoRemoveTrigger.mat'; 
-    Beamformer_output_filename = 'beamformer_Chinese_notRemovingTrigger.mat'; 
+    Beamformer_output_filename = 'beamformer_Chinese.mat'; 
     
     % To save a different version of beamformer results (e.g. when using 
     % a new set of ERF outputs), simply change this filename.
@@ -33,30 +62,12 @@ function source_v1
     ROI_output_filename = '_ROI.mat';
 
     
-    %%
-    % NOTE: always run from the "analysis_scripts" folder, to ensure all relative
-    % paths work as expected
-    %cd('D:\Judy\Exp1\6_MEG-data\analysis_scripts\Yokogawa_FT_v6_split');
 
-    addpath(pwd); % allow access to scripts in this folder even after we cd into each SubjectFolder
-    %addpath([pwd '\\coreg-master\\']); % allow access to coreg scripts
+    %SubjectFolders = listFolders(DataFolder);
+    SubjectFolders = [dir([DataFolder 'A*']); dir([DataFolder 'B*'])];
+    SubjectFolders = {SubjectFolders.name}; % extract the names into a cell array
 
-    % run the #define section
-    global DataFolder; global ResultsFolder; global ResultsFolder_ROI; global ResultsFolder_Source;
-    global filename_suffix; 
-    global eventnames; global conds_cue; global conds_target;
-    common();
-
-    % specify all paths as absolute paths here, because below we 'cd' into each
-    % subject folder & the relative path will no longer be correct
-    templates_dir = [pwd '\\..\\FT_templates\\']; % Location of the required templates (headmodel, grid & mri).
-                                           % These usually come with the FT toolbox, but for some reason 
-                                           % I don't have them (later found out: I had the "lite" version of FT).
-                                           % For ease of access (consistent path across computers), I've stored a copy here.                                  
-
-    SubjectFolders = listFolders(DataFolder);
-
-
+    
     %% each cycle processes one subject
     for h = 1:length(SubjectFolders)
 
@@ -80,20 +91,21 @@ function source_v1
         confile = [filename_base, '_B1.con'];
         mrkfile = [filename_base, '_ini.mrk']; % choose which marker file to use
         
-        % specify the bad marker coils for each subject
+        % specify the bad marker coils (max 2) for each subject
+        % Enter as: {'LPAred','RPAyel','PFblue','LPFwh','RPFblack'}
         bad_coil = ''; 
-        if strcmp(SubjectID, 'M08-YL-2763') || strcmp(SubjectID, 'M10-SS-2764')
-            bad_coil = {'LPFwh', 'RPFblack'};
-        elseif strcmp(SubjectID, 'M20-FG-2814') || strcmp(SubjectID, 'M17-KZ-2815')
-            bad_coil = {'PFblue'};
+        if strcmp(SubjectID, 'A02-EL-3604') || strcmp(SubjectID, 'A05-RW-3584') ...
+          || strcmp(SubjectID, 'A11-DZ-3541') || strcmp(SubjectID, 'B07-OS-3547') ...
+          || strcmp(SubjectID, 'B02-YW-3523') % B02 & B07 had 3 markers that moved >5mm, we can only exclude 2 here (however, the movement was only btwn preB2 & post, so it could have happened at the very end after task finished)
+            bad_coil = {'LPAred', 'PFblue'};
+        elseif strcmp(SubjectID, 'A03-ZZ-3555') || strcmp(SubjectID, 'B03-BQ-3554')
+            bad_coil = {'LPAred'};
         end
 
                 
         % check which version of MEMES to use
         if strcmp(MEMES_VERSION, 'MEMES1')
-            % location of your MRI database (consistent relative path across computers)
-            MRI_folder = [pwd '\\..\\..\\..\\..\\MRI_databases\\HCP\\']; % HCP database
-            %MRI_folder = 'H:\No-Backup\MRI_databases\HCP\'; % HCP database
+            MRI_folder = [MRI_path 'HCP\\']; % HCP database
             coreg_output = [pwd '\\MEMES\\']; % where to store the output from MEMES
             
             % if headmodel etc haven't been generated, do this now
@@ -133,9 +145,8 @@ function source_v1
             end
             
         elseif strcmp(MEMES_VERSION, 'MEMES3')
-            % location of your MRI database (consistent relative path across computers)  
-            MRI_folder = [pwd '\\..\\..\\..\\..\\MRI_databases\\SLIM_completed\\']; % SLIM Chinese database
-            %MRI_folder = [pwd '\\..\\..\\..\\..\\MRI_databases\\HCP_for_MEMES3\\']; % new HCP database (works with MEMES3)
+            MRI_folder = [MRI_path 'SLIM_completed\\']; % SLIM Chinese database
+            %MRI_folder = [MRI_path 'HCP_for_MEMES3\\']; % new HCP database (works with MEMES3)
             coreg_output = [pwd '\\MEMES_Chinese\\']; % where to store the output from MEMES
             %coreg_output = [pwd '\\MEMES3_HCP\\']; % where to store the output from MEMES
             
@@ -155,6 +166,8 @@ function source_v1
                 movefile('*model*', coreg_output);
                 movefile('*quality*', coreg_output);
                 movefile('*example*', coreg_output);
+                movefile('*scaling*', coreg_output);
+                movefile('*winner*', coreg_output);
             end
  
 
@@ -173,10 +186,10 @@ function source_v1
 
         %% Step 2: load this subject's ERF results
         %
-        subject_data = load([ResultsFolder SubjectID '_erf' filename_suffix '.mat']);
+        subject_data = load([ResultsFolder_thisrun SubjectID '_erf' filename_suffix '.mat']);
         erf = subject_data.erf_clean;
-        erf_cue_combined = subject_data.erf_cue_combined;
-        erf_target_combined = subject_data.erf_target_combined;
+        erf_cue_combined = subject_data.erf_allconds;
+        %erf_target_combined = subject_data.erf_target_combined;
         clear subject_data;
         %
         
@@ -231,7 +244,7 @@ function source_v1
 
 
         %% if haven't already done the beamforming before, do it now & save a copy
-        Beamformer_output_file = [pwd '\' Beamformer_output_filename];
+        Beamformer_output_file = [pwd '\\' Beamformer_output_filename];
         if (exist(Beamformer_output_file, 'file') ~= 2)    
 
             %% Step 3: prepare sourcemodel & leadfield
@@ -340,10 +353,10 @@ function source_v1
             cfg.lcmv.projectmom = 'no';
             cfg.lcmv.normalize  = 'yes'; %corrects for depth bias?
             source_cue_combined = ft_sourceanalysis(cfg, erf_cue_combined); % create spatial filter for cue window
-            source_target_combined = ft_sourceanalysis(cfg, erf_target_combined); % create spatial filter for target window
+            %source_target_combined = ft_sourceanalysis(cfg, erf_target_combined); % create spatial filter for target window
 
             % save
-            save(Beamformer_output_file, 'sourcemodel', 'source_cue_combined', 'source_target_combined');
+            save(Beamformer_output_file, 'sourcemodel', 'source_cue_combined'); % 'source_target_combined');
         end
         
                     
@@ -419,7 +432,7 @@ function source_v1
         if RUN_ROI_ANALYSIS
             
             % if haven't done ROI activity reconstruction before, do it now & save a copy
-            ROI_output_file = [ResultsFolder_ROI SubjectID ROI_output_filename];
+            ROI_output_file = [ResultsFolder_ROI_thisrun SubjectID ROI_output_filename];
             if exist(ROI_output_file, 'file') ~= 2
                 % load required files
                 temp = load([templates_dir, 'standard_sourcemodel3d5mm']);
@@ -429,7 +442,7 @@ function source_v1
                 temp = load(Beamformer_output_file);
                 sourcemodel = temp.sourcemodel;
                 source_cue_combined = temp.source_cue_combined;
-                source_target_combined = temp.source_target_combined;
+                %source_target_combined = temp.source_target_combined;
 
 
                 % Load Atlas (contains parcellation of brain into regions/tissues/parcels)
@@ -528,14 +541,14 @@ function source_v1
                     end
                     % for each vertex, get the spatial filter (i.e. set of weights) for it
                     vertices_filters_cue = cat(1, source_cue_combined.avg.filter{vertices_all}); 
-                    vertices_filters_target = cat(1, source_target_combined.avg.filter{vertices_all});
+                    %vertices_filters_target = cat(1, source_target_combined.avg.filter{vertices_all});
 
 
                     % create virtual sensor for this ROI in cue window
                     if (strcmp(VE_METHOD, 'centroid'))
-                        VE = create_virtual_sensor_Centroid(ROI_name, vertices_all, vertices_filters_cue, erf_cue_combined, erf, conds_cue, headmodel, sourcemodel);
+                        VE = create_virtual_sensor_Centroid(ROI_name, vertices_all, vertices_filters_cue, erf_cue_combined, erf, [1:length(eventnames_real)], headmodel, sourcemodel);
                     else
-                        VE = create_virtual_sensor_SVD(ROI_name, vertices_filters_cue, erf_cue_combined, erf, conds_cue); 
+                        VE = create_virtual_sensor_SVD(ROI_name, vertices_filters_cue, erf_cue_combined, erf, [1:length(eventnames_real)]); 
                     end
 
                     if ~isempty(VE) % successful
@@ -544,6 +557,7 @@ function source_v1
                         fprintf(['No solution for ', ROI_name, ' in cue window.']);
                     end
 
+                    %{
                     % create virtual sensor for this ROI in target window
                     if (strcmp(VE_METHOD, 'centroid'))
                         VE = create_virtual_sensor_Centroid(ROI_name, vertices_all, vertices_filters_target, erf_target_combined, erf, conds_target, headmodel, sourcemodel);
@@ -553,11 +567,12 @@ function source_v1
 
                     if ~isempty(VE) % successful
                         for j = conds_target  % append to existing cue-window results
-                            ROI_activity.(ROI_name).(eventnames{j}) = VE.(eventnames{j});
+                            ROI_activity.(ROI_name).(eventnames_real{j}) = VE.(eventnames_real{j});
                         end
                     else
                         fprintf(['No solution for ', ROI_name, ' in target window.']);
                     end
+                    %}
                 end
 
                 save(ROI_output_file, 'ROI_activity');
@@ -571,7 +586,7 @@ function source_v1
                     figure; hold on; 
                     title(['Cue window: ' ROI_name]);
                     for j = conds_cue
-                       plot(ROI_activity.(ROI_name).(eventnames{j}).time, ROI_activity.(ROI_name).(eventnames{j}).avg);
+                       plot(ROI_activity.(ROI_name).(eventnames_real{j}).time, ROI_activity.(ROI_name).(eventnames_real{j}).avg);
                        xlim([-0.2 0.75]); % epoch was [-1 1], we only want to plot [-0.2 0.75]
                     end
                     legend(eventnames(conds_cue));
@@ -580,7 +595,7 @@ function source_v1
                     figure; hold on; 
                     title(['Target window: ' ROI_name]);
                     for j = conds_target
-                       plot(ROI_activity.(ROI_name).(eventnames{j}).time, ROI_activity.(ROI_name).(eventnames{j}).avg);
+                       plot(ROI_activity.(ROI_name).(eventnames_real{j}).time, ROI_activity.(ROI_name).(eventnames_real{j}).avg);
                        xlim([-0.2 0.75]); % epoch was [-1 1], we only want to plot [-0.2 0.75]
                     end
                     legend(eventnames(conds_target));
@@ -819,12 +834,12 @@ function source_v1
         if ~isempty(vertices_filters)
             for i = conds
                 % put it into a timelock structure for later calling ft_timelockstatistics (in stats_ROI.m)
-                VE.(eventnames{i}).time = erf_combined.time;
-                VE.(eventnames{i}).label = {ROI_name};
-                VE.(eventnames{i}).dimord = 'chan_time';
+                VE.(eventnames_real{i}).time = erf_combined.time;
+                VE.(eventnames_real{i}).label = {ROI_name};
+                VE.(eventnames_real{i}).dimord = 'chan_time';
 
                 % a list of reconstructed source activities, one for each vertex
-                timecourses = vertices_filters(:,:) * erf.(eventnames{i}).avg(:,:); % estimated source activity = filter * erf (i.e. s = w * X) 
+                timecourses = vertices_filters(:,:) * erf.(eventnames_real{i}).avg(:,:); % estimated source activity = filter * erf (i.e. s = w * X) 
 
                 % weight the timecourse for each vertex by its distance to centre
                 timecourses_weighted = [];
@@ -834,7 +849,7 @@ function source_v1
                 end
 
                 % take the mean of all the weighted timecourses (i.e. collapse into one timecourse)
-                VE.(eventnames{i}).avg = mean(timecourses_weighted, 1);
+                VE.(eventnames_real{i}).avg = mean(timecourses_weighted, 1);
             end
 
             % Preserve .sampleinfo field to avoid warnings later
@@ -866,10 +881,10 @@ function source_v1
             %VE.label = {ROI_name};
             for i = conds
                 % put it into a timelock structure for later calling ft_timelockstatistics (in stats_ROI.m)
-                VE.(eventnames{i}).time = erf_combined.time;
-                VE.(eventnames{i}).avg(1,:) = filter(1,:) * erf.(eventnames{i}).avg(:,:); % estimated source activity = filter * erf (i.e. s = w * X)
-                VE.(eventnames{i}).label = {ROI_name};
-                VE.(eventnames{i}).dimord = 'chan_time';
+                VE.(eventnames_real{i}).time = erf_combined.time;
+                VE.(eventnames_real{i}).avg(1,:) = filter(1,:) * erf.(eventnames_real{i}).avg(:,:); % estimated source activity = filter * erf (i.e. s = w * X)
+                VE.(eventnames_real{i}).label = {ROI_name};
+                VE.(eventnames_real{i}).dimord = 'chan_time';
             end
 
             % Preserve .sampleinfo field to avoid warnings later

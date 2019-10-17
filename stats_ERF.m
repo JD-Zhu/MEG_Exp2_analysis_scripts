@@ -13,51 +13,59 @@ repaired_erf_folder = 'channelrepaired\\'; % need to create this folder first
 AVGOVERTIME = false;
 
 
+% SELECT which set of single-subject ERFs to use
+run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
+
+
+
 %%
 % run the #define section
-global conds_cue; global conds_target; global eventnames_8;
 global ResultsFolder; % all subjects' erf data are stored here
 global filename_suffix; % erf results file suffix
+
+global eventnames_real; global colours_and_lineTypes; 
+global colours; global lineTypes;
+global PLOT_XLIM; global ERF_BASELINE;
 common();
 
 
 % initialise allSubjects_erf (each field holds all subjects' erf in that condition)
-allSubjects_erf.cuechstay = {};
-allSubjects_erf.cuechswitch = {};
-allSubjects_erf.cueenstay = {};
-allSubjects_erf.cueenswitch = {};
-%{
-allSubjects_erf.targetchstay = {};
-allSubjects_erf.targetchswitch = {};
-allSubjects_erf.targetenstay = {};
-allSubjects_erf.targetenswitch = {};
-%}
+allSubjects_erf.NatStay = {};
+allSubjects_erf.NatSwitch = {};
+allSubjects_erf.NatSingle = {};
+allSubjects_erf.ArtStay = {};
+allSubjects_erf.ArtSwitch = {};
+allSubjects_erf.ArtSingle = {};
+allSubjects_erf.BiStay = {};
+allSubjects_erf.BiSwitch = {};
+allSubjects_erf.BiSingle = {};
 
 
 %% Read data
 
-% find all .mat files in ResultsFolder
-files = dir([ResultsFolder '*_erf' filename_suffix '.mat']);
+% find all .mat files in ResultsFolder_thisrun
+ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all subjects
+files = dir([ResultsFolder_thisrun '*_erf' filename_suffix '.mat']);
 
 % each cycle reads in one '.mat' file (ie. one subject's erf data)
 for i = 1:length(files)
-    filename = [ResultsFolder files(i).name];
+    filename = [ResultsFolder_thisrun files(i).name];
     load(filename);
         
-    for j = 1:length(eventnames_8) % 4 conditions in cue & 4 conditions in target (total 8)
+    for j = 1:length(eventnames_real) % 9 conds (if collapsed across langs) or 18 conds (if not collapsed)
         % perform channel repair if needed
         if (CHANNEL_REPAIR == true)
-            load([ResultsFolder 'neighbours.mat']);
-            load([ResultsFolder 'all_labels.mat']);
-            erf_clean.(eventnames_8{j}) = repair_bad_channels(erf_clean.(eventnames_8{j}), neighbours, all_labels);
+            load('neighbours.mat');
+            load('all_labels.mat');
+            erf_clean.(eventnames_real{j}) = repair_bad_channels(erf_clean.(eventnames_real{j}), neighbours, all_labels);
         end
         % add to allsubjects matrix
-        allSubjects_erf.(eventnames_8{j}) = [allSubjects_erf.(eventnames_8{j}) erf_clean.(eventnames_8{j})];
+        allSubjects_erf.(eventnames_real{j}) = [allSubjects_erf.(eventnames_real{j}) erf_clean.(eventnames_real{j})];
     end
     
     % save the new erf after channel repair
     if (CHANNEL_REPAIR == true)
-        save([ResultsFolder repaired_erf_folder files(i).name], 'SubjectFolder', 'erf_clean');
+        save([ResultsFolder_thisrun repaired_erf_folder files(i).name], 'SubjectFolder', 'erf_clean');
     end
 end
 
@@ -69,44 +77,52 @@ fprintf('\n= COMPUTING & PLOTTING CROSS-SUBJECT AVERAGES =\n');
 
 % CALCULATE the grand average (across all subjects) for each condition
 cfg = [];
-cfg.channel   = {'all', '-AG101', '-AG122', '-AG007', '-AG103'}; % remove noisy sensors:
+cfg.channel   = {'all', '-AG101', '-AG122', '-AG007', '-AG103'}; % remove noisy sensors (MEG Exp2):
                                                                 % ch100 (AG101) is always noisy -> Remove for all ptps!
                                                                 % ch006 & ch102 also shows the same noise occasionally.
                                                                 % ch121 (AG122) tends to show square noise.
 cfg.latency   = 'all';
 cfg.parameter = 'avg';
-for j = 1:length(eventnames_8)
+for j = 1:length(eventnames_real)
     cfg.keepindividual = 'no'; % average across subjects
-    GA_erf.(eventnames_8{j}) = ft_timelockgrandaverage(cfg, allSubjects_erf.(eventnames_8{j}){:});  
+    GA_erf.(eventnames_real{j}) = ft_timelockgrandaverage(cfg, allSubjects_erf.(eventnames_real{j}){:});  
 
     cfg.keepindividual = 'yes'; % do not average across subjects, keep the data for each individual subject
-    GA_indi.(eventnames_8{j}) = ft_timelockgrandaverage(cfg, allSubjects_erf.(eventnames_8{j}){:}); 
+    GA_indi.(eventnames_real{j}) = ft_timelockgrandaverage(cfg, allSubjects_erf.(eventnames_real{j}){:}); 
 
     % "{:}" means to use data from all elements of the variable
 end
 
-save([ResultsFolder 'GA_erf.mat'], 'GA_erf');
-save([ResultsFolder 'GA_individuals.mat'], 'GA_indi');
+GA_output_file = [ResultsFolder_thisrun 'GA_avg.mat'];
+if (exist(GA_output_file, 'file') ~= 2) 
+    save(GA_output_file, 'GA_erf');
+end
+GA_output_file = [ResultsFolder_thisrun 'GA_individuals.mat'];
+if (exist(GA_output_file, 'file') ~= 2) 
+    save(GA_output_file, 'GA_indi');
+end
 
 % multiplot
-load([ResultsFolder 'lay.mat']);
+load('lay.mat');
         
 cfg              = [];
 cfg.showlabels   = 'yes';
 cfg.fontsize     = 6;
 cfg.layout       = lay;
-cfg.baseline     = [-0.1 0];
+cfg.baseline     = ERF_BASELINE;
 cfg.baselinetype = 'absolute';
+cfg.graphcolor   = cell2mat(colours); 
+cfg.linestyle    = lineTypes;
+cfg.xlim         = PLOT_XLIM;
 
-% cue
-figure('Name','ft_multiplotER: GA_erf.cuechstay, GA_erf.cuechsw, GA_erf.cueenstay, GA_erf.cueensw');
-ft_multiplotER(cfg, GA_erf.cuechstay, GA_erf.cuechswitch, GA_erf.cueenstay, GA_erf.cueenswitch);
-legend(eventnames_8(conds_cue));
-
-% target
-figure('Name','ft_multiplotER: GA_erf.targetchstay, GA_erf.targetchsw, GA_erf.targetenstay, GA_erf.targetensw');
-ft_multiplotER(cfg, GA_erf.targetchstay, GA_erf.targetchswitch, GA_erf.targetenstay, GA_erf.targetenswitch);
-legend(eventnames_8(conds_target));
+figure('Name','ft_multiplotER: GA_erf (9 conds)');
+% convert struct to cell array, then you can feed it in as 'varargin'
+cellarray = struct2cell(GA_erf);
+ft_multiplotER(cfg, cellarray{:});
+% specify the legends manually (otherwise it will display incorrectly)
+lines = findall(gcf, 'Type','line');
+lines = lines([29 26 23 20 17 14 11 8 5]); % grab the correct lines (this is complicated because many lines are plotted in ft_multiplot)
+legend(lines, eventnames_real);
 
 
 % CALCULATE global averages across all sensors (i.e. GFP = global field power)
@@ -114,25 +130,21 @@ cfg        = [];
 cfg.method = 'power';
 %cfg.channel = {'AG017', 'AG018', 'AG019', 'AG022', 'AG023', 'AG025', 'AG029', 'AG063', 'AG064', 'AG143'}; % 10 sig channels in cluster
 cfg.channel   = {'all', '-AG101', '-AG122', '-AG007', '-AG103'}; % remove noisy sensors (see above)
-for j = 1:length(eventnames_8)
-    GA_erf_GFP.(eventnames_8{j}) = ft_globalmeanfield(cfg, GA_erf.(eventnames_8{j}));
+for j = 1:length(eventnames_real)
+    GA_erf_GFP.(eventnames_real{j}) = ft_globalmeanfield(cfg, GA_erf.(eventnames_real{j}));
 end
 
-% plot GFP for cue-locked 
-figure('Name','GFP_cue'); hold on
-for j = conds_cue
-    plot(GA_erf_GFP.(eventnames_8{j}).time, GA_erf_GFP.(eventnames_8{j}).avg);
-    xlim([-0.1 0.75]);
+% plot GFP
+figure('Name','GFP (all subjects)'); hold on
+for j = 1:length(eventnames_real)
+    if colours_and_lineTypes % use a combination of colours and line types to distinguish conds
+        plot(GA_erf_GFP.(eventnames_real{j}).time, GA_erf_GFP.(eventnames_real{j}).avg, 'color', colours{j}, 'LineStyle', lineTypes{j});
+    else % just use colours
+        plot(GA_erf_GFP.(eventnames_real{j}).time, GA_erf_GFP.(eventnames_real{j}).avg, 'color', colours(j,:));
+    end
+    xlim(PLOT_XLIM);
 end
-legend(eventnames_8(conds_cue));
-
-% plot GFP for target-locked 
-figure('Name','GFP_target'); hold on
-for j = conds_target
-    plot(GA_erf_GFP.(eventnames_8{j}).time, GA_erf_GFP.(eventnames_8{j}).avg);
-    xlim([-0.1 0.75]);
-end
-legend(eventnames_8(conds_target));
+legend(eventnames_real);
 
 
 % average across all 4 conds (for selecting windows for peaks)
@@ -150,13 +162,22 @@ plot(averageAcrossConds_target.time, averageAcrossConds_target.avg);
 xlim([-0.1 0.75]);
 %}
 
+
 %% Statistical analysis
+
+data = allSubjects_erf; % make an easy name
+
+% Optional: select which subjects to (not) use
+for j = 1:length(eventnames_real)
+    %data.(eventnames_real{j})([1 11 16 19 20 21 14]) = [];
+end
+
 
 fprintf('\n= STATS: CLUSTER-BASED PERMUTATION TESTS =\n');
 
 cfg = [];
 cfg.channel   = {'all', '-AG101', '-AG122', '-AG007', '-AG103'}; % remove noisy sensors (see above)
-load([ResultsFolder 'neighbours.mat']); % this is the sensor layout - it's the same for all subjects (even same across experiments). So just prepare once & save, then load here
+load('neighbours.mat'); % this is the sensor layout - it's the same for all subjects (even same across experiments). So just prepare once & save, then load here
 cfg.neighbours = neighbours;  % same as defined for the between-trials experiment
 
 % can choose diff time windows to analyse for cue epochs & target epochs
@@ -170,7 +191,7 @@ if (AVGOVERTIME)
                             % cfg.latency = [0.08 0.12]; cfg.avgovertime = 'yes'; )
 else % autoly detect temporal cluster
     latency_cue = [-0.1 0.75]; % time interval over which the experimental 
-    latency_target = [-0.1 0.75]; %conditions must be compared (in seconds)
+                               % conditions must be compared (in seconds)
     cfg.avgovertime = 'no';
 end
 
@@ -190,10 +211,10 @@ cfg.tail = 0;
 cfg.clustertail = 0; % 2 tailed test
 cfg.alpha = 0.1; %0.001  % threshold for cluster-level statistics (any cluster with a p-value lower than this will be reported as sig - an entry of '1' in .mask field)
 cfg.correcttail = 'prob'; % correct for 2-tailedness
-cfg.numrandomization = 2000; % Rule of thumb: use 500, and double this number if it turns out 
+cfg.numrandomization = 500; % Rule of thumb: use 500, and double this number if it turns out 
     % that the p-value differs from the chosen alpha (e.g. 0.05) by less than 0.02
 
-numSubjects = length(files);
+numSubjects = length(data.(eventnames_real{1})); % check how many subjects we are including
 within_design_2x2 = zeros(2,2*numSubjects);
 within_design_2x2(1,:) = repmat(1:numSubjects,1,2);
 within_design_2x2(2,1:numSubjects) = 1;
@@ -203,10 +224,48 @@ cfg.design = within_design_2x2;
 cfg.uvar  = 1; % row of design matrix that contains unit variable (in this case: subjects)
 cfg.ivar  = 2; % row of design matrix that contains independent variable (i.e. the conditions)
 
+cfg.latency = latency_cue;
+
 
 % Run the statistical tests
-data = allSubjects_erf; % make an easy name
+[Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
+length(find(Bi_sw.mask))
+%%
+% Switch cost in each context
+[Nat_sw] = ft_timelockstatistics(cfg, data.NatStay{:}, data.NatSwitch{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
+[Art_sw] = ft_timelockstatistics(cfg, data.ArtStay{:}, data.ArtSwitch{:});
+[Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
 
+% Mixing cost in each context
+[Nat_mix] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:});
+[Art_mix] = ft_timelockstatistics(cfg, data.ArtSingle{:}, data.ArtStay{:});
+[Bi_mix] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
+
+length(find(Nat_sw.mask))
+length(find(Art_sw.mask))
+length(find(Bi_sw.mask))
+length(find(Nat_mix.mask))
+length(find(Art_mix.mask))
+length(find(Bi_mix.mask))
+
+%save([ResultsFolder_thisrun 'stats_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Nat_sw', 'Art_sw', 'Bi_sw', 'Nat_mix', 'Art_mix', 'Bi_mix');
+
+% interaction in switch cost
+cfg.minnbchan = 2;
+[timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.BiStay, data.BiSwitch);
+[interaction_sw] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
+
+length(find(interaction_sw.mask))
+
+% interaction in mixing cost
+cfg.minnbchan = 2;
+[timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSingle, data.BiStay, data.BiSingle);
+[interaction_mix] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
+
+length(find(interaction_mix.mask))
+
+
+%% Below are from MEG Exp 1
 % Interaction (i.e. calc sw$ in each lang, then test the 2 sw$)
 % http://www.fieldtriptoolbox.org/faq/how_can_i_test_an_interaction_effect_using_cluster-based_permutation_tests
 %{
@@ -224,11 +283,11 @@ end
 % manual calculation above is now replaced by combine_conds_for_T_Test()
 fprintf('\nCUE window -> Testing lang x ttype interaction:\n');
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.cuechstay, data.cuechswitch, data.cueenstay, data.cueenswitch);
-cfg.latency = latency_cue; % time interval over which the experimental 
+cfg.latency = latency_cue;  
 [cue_interaction] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
 fprintf('\nTARGET window -> Testing lang x ttype interaction:\n');
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.targetchstay, data.targetchswitch, data.targetenstay, data.targetenswitch); %'2-1 vs 4-3');
-cfg.latency = latency_target; % time interval over which the experimental 
+cfg.latency = latency_target;  
 [target_interaction] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_target_ch_switchCost{:}, allSubj_target_en_switchCost{:});
 
 % Main effect of lang (collapse across stay-switch)
@@ -246,11 +305,11 @@ end
 %}
 fprintf('\nCUE window -> Main effect of lang:\n');
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_12vs34', data.cuechstay, data.cuechswitch, data.cueenstay, data.cueenswitch);
-cfg.latency = latency_cue; % time interval over which the experimental 
+cfg.latency = latency_cue; 
 [cue_lang] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_cue_ch{:}, allSubj_cue_en{:});
 fprintf('\nTARGET window -> Main effect of lang:\n');
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_12vs34', data.targetchstay, data.targetchswitch, data.targetenstay, data.targetenswitch); %'2-1 vs 4-3');
-cfg.latency = latency_target; % time interval over which the experimental 
+cfg.latency = latency_target;
 [target_lang] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_target_ch{:}, allSubj_target_en{:});
 
 % Main effect of switch (collapse across langs)
@@ -268,11 +327,11 @@ end
 %}
 fprintf('\nCUE window -> Main effect of ttype:\n');
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_13vs24', data.cuechstay, data.cuechswitch, data.cueenstay, data.cueenswitch);
-cfg.latency = latency_cue; % time interval over which the experimental 
+cfg.latency = latency_cue; 
 [cue_ttype] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_cue_stay{:}, allSubj_cue_switch{:});
 fprintf('\nTARGET window -> Main effect of ttype:\n');
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_13vs24', data.targetchstay, data.targetchswitch, data.targetenstay, data.targetenswitch); %'2-1 vs 4-3');
-cfg.latency = latency_target; % time interval over which the experimental 
+cfg.latency = latency_target; 
 [target_ttype] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_target_stay{:}, allSubj_target_switch{:});
 
 % check for effects by searching the .mask field
@@ -283,14 +342,14 @@ effect_target_interaction = length(find(target_interaction.mask))
 effect_target_lang = length(find(target_lang.mask))
 effect_target_ttype = length(find(target_ttype.mask))
 
-%save([ResultsFolder 'stats.mat'], 'cue_interaction', 'cue_lang', 'cue_ttype', 'target_interaction', 'target_lang', 'target_ttype');
+%save([ResultsFolder_thisrun 'stats.mat'], 'cue_interaction', 'cue_lang', 'cue_ttype', 'target_interaction', 'target_lang', 'target_ttype');
 
 
 %% Plotting: use ft_clusterplot & ft_topoplot
 
-load([ResultsFolder 'stats.mat']);
-load([ResultsFolder 'lay.mat']);
-load([ResultsFolder 'GA_erf_allConditions.mat']); % only required if using ft_topoplot
+load([ResultsFolder_thisrun 'stats.mat']);
+load('lay.mat');
+load([ResultsFolder_thisrun 'GA_erf_allConditions.mat']); % only required if using ft_topoplot
 
 % use a nice-looking colourmap
 ft_hastoolbox('brewermap', 1); % ensure this toolbox is on the path
@@ -306,6 +365,10 @@ stat = target_lang; % here we plot the only effect that seems to survive correct
                   % a reasonable number: 2 (ft tutorial) or 4 (Paul)
 
 %% ft_clusterplot (based on t-values)
+
+% too much warning, can't see the console output
+ft_warning off 'FieldTrip:ft_clusterplot:ft_topoplotTFR:topoplot_common:ft_selectdata:getdimord:warning_dimord_could_not_be_determined:line681'
+
 cfg = [];
 %cfg.zlim = [-5 5]; % set scaling (range of t-values) (usually using automatic is ok) 
 cfg.highlightcolorpos = [1 1 1]; % white for pos clusters
@@ -427,7 +490,7 @@ cfg.channel = stat.label(find(cue_ttype.mask)); % autoly retrieve sig channels (
 
 figure('Name','Average ERF of significant channels - cue window');
 ft_singleplotER(cfg, GA_erf.cuechstay, GA_erf.cuechswitch, GA_erf.cueenstay, GA_erf.cueenswitch);
-legend(eventnames_8(conds_cue));
+legend(eventnames_real(conds_cue));
 xlim([-0.1 0.75]);
 
 % if doing avgovertime, plot vertical lines to indicate the time window
@@ -443,7 +506,7 @@ cfg.channel = stat.label(find(target_ttype.mask)); % autoly retrieve sig channel
 
 figure('Name','Average ERF of significant channels - target window');
 ft_singleplotER(cfg, GA_erf.targetchstay, GA_erf.targetchswitch, GA_erf.targetenstay, GA_erf.targetenswitch);
-legend(eventnames_8(conds_target));
+legend(eventnames_real(conds_target));
 xlim([-0.1 0.75]);
 
 % if doing avgovertime, plot vertical lines to indicate the time window

@@ -26,8 +26,8 @@ function [erf_clean, erf_allconds] = compute_ERF (trials_clean)
 
 
     % Compute erf & cov matrix on the combined data (all conds appended together)
-    cellarray = struct2cell(trials_clean); % convert struct to cell array, 
-    trials_clean_allconds = ft_appenddata([], cellarray{:}); % then you can feed it in as 'varargin'
+    cellarray = struct2cell(trials_clean); % convert struct to cell array, then you can feed it in as 'varargin'
+    trials_clean_allconds = ft_appenddata([], cellarray{:});
 
     cfg                  = [];
     cfg.covariance       = 'yes';

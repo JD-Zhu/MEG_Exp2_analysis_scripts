@@ -505,7 +505,13 @@ switch method
         % Find the MRI with the lowest ICP error between Polhemus points
         % and 3D scalp mesh
         winner = find(error_term == min(min(error_term)));
-        fprintf('\nThe winning MRI is number %d of %d : %s\n',winner,length(subject),subject{winner});
+        
+        % output the winner number to console & save to txt file
+        winner_text = sprintf('The winning MRI is number %d of %d : %s',winner,length(subject),subject{winner});
+        disp(['\n' winner_text '\n']);
+        fid = fopen('winner.txt','wt');
+        fprintf(fid, winner_text);
+        fclose(fid);
         
         % Get the transformation matrix of the winner
         trans_matrix = trans_matrix_library{winner};
