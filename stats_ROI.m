@@ -25,6 +25,8 @@ global PLOT_XLIM; global ROI_BASELINE;
 global PLOT_SHADE; % for plotting shaded boundary on each time course
 common();
 
+PLOT_SHADE = 'no'; % TEMP FIX - bounded_lines throws an error for some reason!
+
 
 % SELECT which set of single-subject ERFs to use
 run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
@@ -174,15 +176,32 @@ for k = 1:length(ROIs_label)
     % Run the statistical tests
     
     % Interaction (i.e. calc sw$ in each lang, then submit the 2 sw$ for comparison)
-    fprintf('\nCUE window -> Testing lang x ttype interaction:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.cuechstay, data.cuechswitch, data.cueenstay, data.cueenswitch);
+    fprintf('\nNat vs Bi -> Testing valence x switch interaction:\n');
+    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.BiStay, data.BiSwitch);
     %cfg.latency = latency_cue; % time interval over which the experimental 
-    [cue_interaction.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-    fprintf('\nTARGET window -> Testing lang x ttype interaction:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.targetchstay, data.targetchswitch, data.targetenstay, data.targetenswitch); %'2-1 vs 4-3');
+    [SwCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
+    fprintf('\nNat vs Bi -> Testing valence x mix interaction:\n');
+    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.BiSingle, data.BiStay); %'2-1 vs 4-3');
     %cfg.latency = latency_target; % time interval over which the experimental 
-    [target_interaction.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
+    [MixCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
     
+    
+    % Sanity Check - did we find a switch cost in Bivalent context?
+    [Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
+    [Bi_mix] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
+    %[Nat_mix] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:}); 
+    
+    % write any sig effects to file
+    fid = fopen('ROI_sanityCheck.txt', 'wt');
+    if ~isempty(find(Bi_sw.mask))
+        fprintf(fid, ['Bivalent switch cost in' ROI_name ': length ' length(find(Bi_sw.mask)) '\n']);
+    end
+    if ~isempty(find(Bi_mix.mask))
+        fprintf(fid, ['Bivalent mixing cost in' ROI_name ': length ' length(find(Bi_mix.mask)) '\n']);
+    end    
+    fclose(fid);
+    
+%{    
     % Main effect of lang (collapse across stay-switch)
     fprintf('\nCUE window -> Main effect of lang:\n');
     [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_12vs34', data.cuechstay, data.cuechswitch, data.cueenstay, data.cueenswitch);
@@ -202,10 +221,10 @@ for k = 1:length(ROIs_label)
     [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_13vs24', data.targetchstay, data.targetchswitch, data.targetenstay, data.targetenswitch); %'2-1 vs 4-3');
     %cfg.latency = latency_target; % time interval over which the experimental 
     [target_ttype.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-
+%}
 end
 
-save([ResultsFolder_ROI_thisrun 'stats.mat'], 'cue_interaction', 'cue_lang', 'cue_ttype', 'target_interaction', 'target_lang', 'target_ttype');
+%save([ResultsFolder_ROI_thisrun 'stats.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi');
 
 
 %% Find the effects & plot them
@@ -260,7 +279,7 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
                 % each cycle plots 1 line (ie. 1 condition)
                 for j = 1:length(eventnames_real)
                     if strcmp(PLOT_SHADE, 'no') % do not plot shaded boundary, just plot a single line                  
-                        plot(GA.(ROI_name).(eventnames_real{j}).time, GA.(ROI_name).(eventnames_real{j}).avg);
+                        plot(GA.(ROI_name).(eventnames_real{j}).time, GA.(ROI_name).(eventnames_real{j}).avg); % 'color',colours{j});
                     else % calc the margin for shaded boundary (stdev / sem / CI) at every time point
                         allsubjects = GA_indi.(ROI_name).(eventnames_real{j}).individual;
                         margin = calc_margin(allsubjects, PLOT_SHADE);
@@ -282,7 +301,9 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
             % each shaded patch as an item too). For some reason,
             % the order of the lines are reversed when you grab them
             lines = findall(gcf, 'Type','line');
-            legend([lines(4) lines(3) lines(2) lines(1)], {'Mandarin (L1) stay', 'Mandarin (L1) switch', 'English (L2) stay', 'English (L2) switch'}, 'Location','northwest', 'FontSize',30);
+            legend([lines(9) lines(8) lines(7) lines(6) lines(5) lines(4) lines(3) lines(2) lines(1)], ...
+              {'NatStay', 'NatSwitch', 'NatSingle', 'ArtStay', 'ArtSwitch', 'ArtSingle', 'BiStay', 'BiSwitch', 'BiSingle'}, ...
+              'Location','northwest', 'FontSize',30);
             set(lines, 'Linewidth',3); % line thickness
                 
             % reference code:

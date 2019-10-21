@@ -50,8 +50,8 @@ function source_v1
     % = Save files =
     
     % filename for saving the beamformer output (to avoid running the whole thing every time)
-    %Beamformer_output_filename = 'beamformer_Chinese_PCAtoRemoveTrigger.mat'; 
-    Beamformer_output_filename = 'beamformer_Chinese.mat'; 
+    %Beamformer_output_filename = 'beamformer_Chinese.mat'; % In this version: cfg.lcmv.lamda = '5%'; 
+    Beamformer_output_filename = 'beamformer_Chinese_lambda=1.mat'; 
     
     % To save a different version of beamformer results (e.g. when using 
     % a new set of ERF outputs), simply change this filename.
@@ -68,7 +68,7 @@ function source_v1
 
     
     %% each cycle processes one subject
-    for h = 1:length(SubjectFolders)  %TODO: need to redo [6 12 17 19], MEMES did not find good MRI, was tilted!!
+    for h = 1:length(SubjectFolders)  %TODO: need to redo [6 12 17 19] using newest version of MEMES3, to fix the head-tilting-forward problem!!
 
         SubjectID = SubjectFolders{h};
         SubjectFolder = [DataFolder, '\\', SubjectID];
@@ -350,7 +350,8 @@ function source_v1
             cfg.grid            = grid; % individual sourcemodel + leadfield (warped from template grid)
             cfg.grid.unit       = 'cm';
             cfg.headmodel       = headmodel; % individual headmodel (from coreg)
-            cfg.lcmv.lamda      = '5%';
+            %cfg.lcmv.lamda      = '5%';
+            cfg.lcmv.lamda      = '100%'; % regularisation parameter - set to 1 here coz our data is rank-reduced (due to rejecting ICA comps)
             cfg.lcmv.fixedori   = 'yes';
             cfg.lcmv.keepfilter = 'yes';
             cfg.lcmv.projectmom = 'no';
