@@ -192,7 +192,7 @@ for k = 1:length(ROIs_label)
     %[Nat_mix] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:}); 
     
     % write any sig effects to file
-    fid = fopen('ROI_sanityCheck.txt', 'wt');
+    fid = fopen([ResultsFolder_ROI_thisrun 'ROI_sanityCheck.txt'], 'wt');
     if ~isempty(find(Bi_sw.mask))
         fprintf(fid, ['Bivalent switch cost in' ROI_name ': length ' length(find(Bi_sw.mask)) '\n']);
     end

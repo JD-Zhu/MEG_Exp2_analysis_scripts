@@ -151,8 +151,13 @@ function source_v1
             
             % if headmodel etc haven't been generated, do this now
             if ~exist([coreg_output 'headmodel.mat'], 'file')
-                MEMES3(pwd, elpfile, hspfile, confile, mrkfile, MRI_folder,...
-                    bad_coil, 'best', [0.99:0.01:1.01], 5, 'yes')
+                
+                % call MEMES3 (new version Oct 2019)
+                [headshape_downsampled] = downsample_headshape(hspfile);
+                [grad_trans] = mq_realign_sens(pwd,elpfile,hspfile,confile,mrkfile,bad_coil,'rot3dfit'); %'icp';
+                MEMES3(pwd, grad_trans, headshape_downsampled, MRI_folder, 'best', [0.99:0.01:1.01], 5, 3);
+                % call MEMES3 (old version 2018)
+                %MEMES3(pwd, elpfile, hspfile, confile, mrkfile, MRI_folder, bad_coil, 'best', [0.99:0.01:1.01], 5, 'yes')
                 
                 % close the figures MEMES created (each subject creates 5
                 % figures - becomes too many when running in batch)
