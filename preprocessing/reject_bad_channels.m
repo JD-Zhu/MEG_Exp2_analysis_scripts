@@ -9,7 +9,8 @@ function [selChLabel] = reject_bad_channels(alldata)
     cfg.alim                    = 1e-10;
     cfg.keepchannel             = 'no';
     cfg.keeptrial               = 'nan';
+    
     alldata = ft_rejectvisual (cfg, alldata); % visual tool to help identify bad channels
-
+    
     selChLabel                  = alldata.label;
 end

@@ -72,7 +72,7 @@ function stats_ERF_TFCE()
     % reformat data into eeglab format (which TFCE accepts):
     % each condition contains a 3d ("subject x channel x time") matrix
     for j = 1:length(eventnames_8) % loop thru each condition, convert it to eeglab format
-        allSubjects_erf_eeglab.(eventnames_8{j}) = convert_FT_to_eeglab(allSubjects_erf.(eventnames_8{j})); 
+        allSubjects_erf_eeglab.(eventnames_8{j}) = convert_FT_to_eeglab(allSubjects_erf.(eventnames_8{j}), 'TFCE'); 
     end
     
     

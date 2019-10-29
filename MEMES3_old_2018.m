@@ -1,4 +1,4 @@
-function MEMES3(dir_name,elpfile,hspfile,confile,mrkfile,path_to_MRI_library,bad_coil,method,scaling,varargin)
+function MEMES3_old_2018(dir_name,elpfile,hspfile,confile,mrkfile,path_to_MRI_library,bad_coil,method,scaling,varargin)
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MRI Estimation for MEG Sourcespace (MEMES)

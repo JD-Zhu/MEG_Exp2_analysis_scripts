@@ -35,7 +35,7 @@ SubjectIDs = [dir([DataFolder 'A*']); dir([DataFolder 'B*'])];
 %SubjectIDs([2 13 25]) = []; % remove certain subjects from the list
 
 SubjectIDs = {SubjectIDs.name}; % extract the names into a cell array
-%SubjectIDs = {'B06-KZ-3574'}; % or manually specify which subjects to process
+SubjectIDs = {'B02-YS-3628'}; % or manually specify which subjects to process
 
 
 % === Settings ===
@@ -179,10 +179,6 @@ for i = 1:length(SubjectIDs)
         
         % if haven't already processed this before, do it now & save a copy
         if (exist(output_file, 'file') ~= 2)   
-
-%DELETE THIS%
-%continue;
-
             [arft] = mark_artefact(alldata);
             save(output_file, 'arft', '-v7.3');
         else
@@ -582,7 +578,7 @@ for i = 1:length(SubjectIDs)
         plot_ERF([], erf_clean, erf_allconds, lay, false, true, false);
         
         % save the plot as an image
-        png_output_file = [ResultsFolder 'figures_GFP\\' run_name '\\' SubjectID '_GFP.png'];
+        png_output_file = [ResultsFolder_thisrun 'Figures_GFP\\' SubjectID '_GFP.png'];
         if (exist(png_output_file, 'file') ~= 2) 
             saveas(gcf, png_output_file);
         end

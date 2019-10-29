@@ -47,7 +47,7 @@ function stats_ROI_TFCE()
         ROI_name = ROIs_label{k};
 
         for j = 1:length(eventnames_8) % loop thru each condition, convert it to eeglab format
-            allSubjects_ROIs_eeglab.(ROI_name).(eventnames_8{j}) = convert_FT_to_eeglab(allSubjects_ROIs.(ROI_name).(eventnames_8{j})); 
+            allSubjects_ROIs_eeglab.(ROI_name).(eventnames_8{j}) = convert_FT_to_eeglab(allSubjects_ROIs.(ROI_name).(eventnames_8{j}), 'TFCE'); 
             %allSubjects_ROIs_eeglab.(ROI_name).(eventnames_8{j}).label = ROI_name;
             %allSubjects_ROIs_eeglab.(ROI_name).(eventnames_8{j}).dimord = 'subj_chan_time';
         end
