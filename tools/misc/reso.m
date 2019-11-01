@@ -1,3 +1,7 @@
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
+
 % select the raw file here
 rawfile = 'E:\Judy\Exp2_pilots\Pilot_stage2\Data\resting-state\HPF0.3_gain5.con';            
 

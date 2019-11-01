@@ -1,5 +1,7 @@
 % perform detrending on continuous data, using locdetrend()
-
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 function [alldata] = detrend_on_continuous_data(alldata, chanlocs)
 
     % 1. Convert to EEGLAB format

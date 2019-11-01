@@ -1,3 +1,8 @@
+% Preprocessing & ERF analysis for Yokogawa MEG data
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+% Based on code written by Paul Sowman and Yanan Sun
+%
 %{
 Version log:
 

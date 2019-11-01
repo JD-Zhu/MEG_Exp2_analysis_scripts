@@ -2,7 +2,9 @@
 % unexpected peak before 0, strange drifts, etc.)
 % Use this script to browse trial by trial, to see if it was a few 
 % crazy epochs that caused the average to look crazy
-
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 
 %% select the trials you want to check
 cond_trials = trials_clean.NatStay;

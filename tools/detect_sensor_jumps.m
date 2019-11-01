@@ -1,3 +1,7 @@
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
+
 % select according to which system you are using: adult/child
 ref_channels = 161:163;
 

@@ -13,6 +13,8 @@
 % - main effect of ttype (1+3 vs 2+4)
 % - interaction (2-1 vs 4-3)
 %
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 function [timelock1, timelock2] = combine_conds_for_T_test(data_format, type_of_effect, chstay, chswitch, enstay, enswitch)
     % what is the input data format?
     if strcmp(data_format, 'fieldtrip')

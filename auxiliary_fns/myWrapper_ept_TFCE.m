@@ -1,4 +1,7 @@
 % wrapper function for calling ept_TFCE(), so that settings only need to be changed in one place
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 function Results = myWrapper_ept_TFCE(data1, data2)
 
     % the input format to TFCE requires a "channel" dimension, so we check this

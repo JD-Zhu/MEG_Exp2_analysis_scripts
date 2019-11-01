@@ -7,7 +7,9 @@
 
 % This function only deals with one ROI at a time (specified by the input param).
 % To process another ROI, call this function again.
-
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 function allSubjects_ROIs_byCondition = allSubjects_reformat(allSubjects_ROIs_bySubjects, ROI_name, eventnames_8)
     % each cycle processes one condition
     for j = 1:length(eventnames_8)

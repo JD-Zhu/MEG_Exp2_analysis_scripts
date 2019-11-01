@@ -7,6 +7,8 @@
 % @param data:          can be ERF result or ROI result
 % @param which_toolbox: 'TFCE' or 'EMSf' (diff toolboxes rq diff formats)
 %
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 function subj_chan_time = convert_FT_to_eeglab(data, which_toolbox)
     subj_chan_time = []; % initialise the 3d matrix
 

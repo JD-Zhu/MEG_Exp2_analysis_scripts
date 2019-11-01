@@ -1,5 +1,7 @@
 % === exclude trials involving beh errors (based on errorsheet from manual checking) ===
-
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 function events_allBlocks = exclude_beh_errors(SubjectID, events_allBlocks)
     % for each subject, we have 5 separate files to read:
     % {'mixedLang_natuni'}, {'mixedLang_artuni'}, {'mixedLang_bi'}, {'singleLang_Chn'}, {'singleLang_Eng'}

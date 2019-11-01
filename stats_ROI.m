@@ -2,6 +2,8 @@
 %
 % stats_ROI.m
 %
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 % Grand average & statistical analysis on reconstructed ROI activities
 %
 %    Q1: do stats across subjects?

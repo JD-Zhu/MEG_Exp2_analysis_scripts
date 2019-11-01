@@ -1,19 +1,20 @@
 % Plots ERF for each condition. 
 % Generates and plots GFP.
 
-% can use this to regen all plots from saved erf results:
+% Can use this to regen all plots from saved erf results:
 %load([ResultsFolder SubjectID '_erf.mat']); % select which subject to load
 %load([ResultsFolder 'lay.mat']); 
 
-% if you want to compare before & after artefact removal (erf vs. erf_clean),
+% If you want to compare before & after artefact removal (erf vs. erf_clean),
 % set plot_uncleaned to 'true' & supply the 'erf' input arg;
 % if only plotting cleaned erf & GFP, supply the 'erf' arg as []
-
-
+%
 % @param erf:           uncleaned erf (ie. w/o PCA, w/o visual rejection)
 % @param erf_clean:     normal erf
 % @param erf_combined:  avg erf across all conds
-
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 function plot_ERF (erf, erf_clean, erf_combined, lay, plot_uncleaned, plot_multiplot, plot_combined)
 
     % run the #define section

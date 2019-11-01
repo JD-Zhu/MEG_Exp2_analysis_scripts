@@ -1,3 +1,6 @@
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 function MakeFigures_ROI_timeseries
 
     % run the #define section to obtain values for global vars

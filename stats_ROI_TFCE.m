@@ -5,6 +5,9 @@
 % statistical analysis on reconstructed ROI activities using the TFCE method:
 % https://github.com/Mensen/ept_TFCE-matlab
 %
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function stats_ROI_TFCE()

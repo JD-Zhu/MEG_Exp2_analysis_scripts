@@ -1,8 +1,10 @@
 % the common #define section for all scripts
-
+%
 % Warning: all of the global vars below are CONSTANTS.
 % UNDER NO CIRCUMSTANCES should their values be assigned/modified in other scripts.
-
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 function [] = common()
 
     % specify all paths as absolute paths, to avoid any issues when we 'cd' into diff folders    

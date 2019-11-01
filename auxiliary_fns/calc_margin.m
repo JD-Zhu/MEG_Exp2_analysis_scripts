@@ -6,6 +6,9 @@
 % @param margin_type can be: STDEV, SEM, CI_95
 % @param allsubjects: the GA (with keepindividual) for this condition
 %
+% Author: Judy Zhu (github.com/JD-Zhu)
+% Based on code written by Yanan Sun
+%
 function margin = calc_margin(allsubjects, margin_type)
     % standard deviation
     SD = std(allsubjects);

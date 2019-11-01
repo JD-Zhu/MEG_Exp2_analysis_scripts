@@ -1,3 +1,7 @@
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
+
 % run the #define section to obtain values for global vars
 global ResultsFolder; 
 global PLOT_SHADE; global colours; % for plotting shaded boundary on each time course

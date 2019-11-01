@@ -11,6 +11,9 @@
 % compared to Condition B for 56 unique channels in the frontal region 
 % for the time range from 280 - 320 ms (peak channel: Fz; T = 6.024, p = 0.002)."
 %
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function stats_ERF_TFCE()

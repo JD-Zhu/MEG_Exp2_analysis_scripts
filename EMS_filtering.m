@@ -1,3 +1,10 @@
+% Script to compute spatial filter that evolves over time
+% using the EMSf toolbox:
+% https://bitbucket.org/emsf/emsf_matlab/src/default/
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
+
 %%%%%% USER INPUT REQUIRED %%%%%%
 
 % Specify the run_name here:

@@ -16,6 +16,8 @@
 % @param neighbours: the neighbours file created by ft_prepare_neighbours
 % @param all_labels: full list of 160 labels
 %
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 function data = repair_bad_channels(data, neighbours, all_labels)
     % reject all potentially problematic channels first,
     % so that the noise doesn't leak into the repaired channels thru interpolation

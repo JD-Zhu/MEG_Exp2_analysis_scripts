@@ -1,6 +1,8 @@
 % After running stats_ROI.m, you can use this script to perform post-hoc
 % t-tests btwn 2 conds in a particular ROI.
-
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 
 % SELECT THE ROI (where you saw the interaction effect):
 ROI_name = 'LIFG';

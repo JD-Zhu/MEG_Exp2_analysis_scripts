@@ -1,12 +1,14 @@
+% for a given SubjectID:
+% combine its RT output (from neurobs) & errorsheet (from manual checking)
+%
+% Returns:
+% 1 table listing all crit trials (containing trial info & error info).
+% error code 4 - beh error
+% error code 9 - exclude from RT analysis (due to error on prev trial)
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 %{
-for a given SubjectID:
-combine its RT output (from neurobs) & errorsheet (from manual checking)
-
-Returns:
-1 table listing all crit trials (containing trial info & error info).
-error code 4 - beh error
-error code 9 - exclude from RT analysis (due to error on prev trial)
-
 Version log:
 v1 - only reads in original errorsheet (crit trials only)
 v2 - also reads in additional errorsheet (containing manually checked

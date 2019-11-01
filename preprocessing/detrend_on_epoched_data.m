@@ -1,6 +1,8 @@
 % NOTE: this function is no longer used!
 % shouldn't do any detrending on epoched data, as this causes edge effects ("bowtie" shape)
-
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 function [alldata_clean] = detrend_on_epoched_data(alldata, chanlocs)
 
     % <Opt 1> FT_detrend

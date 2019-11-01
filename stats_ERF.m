@@ -1,3 +1,7 @@
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
+
 close all;
 clear all;
 
