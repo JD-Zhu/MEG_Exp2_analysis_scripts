@@ -35,7 +35,7 @@ SubjectIDs = [dir([DataFolder 'A*']); dir([DataFolder 'B*'])];
 %SubjectIDs([2 13 25]) = []; % remove certain subjects from the list
 
 SubjectIDs = {SubjectIDs.name}; % extract the names into a cell array
-SubjectIDs = {'B02-YS-3628'}; % or manually specify which subjects to process
+%SubjectIDs = {'B02-YS-3628'}; % or manually specify which subjects to process
 
 
 % === Settings ===

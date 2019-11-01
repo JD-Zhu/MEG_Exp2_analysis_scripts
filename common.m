@@ -88,7 +88,7 @@ function [] = common()
     % Options: 'no', 'SEM', 'STDEV', 'CI_95'
     % (note: SEM < 95% CI < STDEV)
     global PLOT_SHADE;
-    PLOT_SHADE = 'SEM';
+    PLOT_SHADE = 'no'; %'SEM';
 
     % Do we want to use a combination of diff colours & line types to
     % distinguish btwn conds? if no, we'll only use diff colours

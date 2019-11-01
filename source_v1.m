@@ -146,28 +146,26 @@ function source_v1
         elseif strcmp(MEMES_VERSION, 'MEMES3')
             MRI_folder = [MRI_path 'SLIM_completed\\']; % SLIM Chinese database
             %MRI_folder = [MRI_path 'HCP_for_MEMES3\\']; % new HCP database (works with MEMES3)
-            coreg_output = [pwd '\\MEMES3_Chinese\\']; % where to store the output from MEMES
-            %coreg_output = [pwd '\\MEMES3_HCP\\'];
-
-% -- % THIS PART IS FOR NEW MEMES (2019) ONLY!            
-            if length(bad_coil) >= 2     % we use 'rot3dfit' by default (faster), however this sometimes has issues (creates upside-down coreg)
-                realign_method = 'icp';  % when there are 2 or more bad coils, so in that case we use 'icp' instead
-                %coreg_output = [pwd '\\new_MEMES3_icp\\'];
-            else
-                realign_method = 'rot3dfit';
-                %coreg_output = [pwd '\\new_MEMES3_rot3dfit\\'];
-            end
-% -- % -- %
+            coreg_output = [pwd '\\MEMES_best\\']; % where to store the output from MEMES
+            %coreg_output = [pwd '\\MEMES3_Chinese\\'];
+            %coreg_output = [pwd '\\MEMES3_HCP\\'];        
             
             % if headmodel etc haven't been generated, do this now
             if ~exist([coreg_output 'headmodel.mat'], 'file')
                 
                 % call MEMES3 (new version Oct 2019)
+                if length(bad_coil) >= 2     % we use 'rot3dfit' by default (faster), however this sometimes has issues (creates upside-down coreg)
+                    realign_method = 'icp';  % when there are 2 or more bad coils, so in that case we use 'icp' instead
+                else
+                    realign_method = 'rot3dfit';
+                end
                 [headshape_downsampled] = downsample_headshape(hspfile, 'no', 0); % Robert recommends this setting for my defaced MRI database
                 [grad_trans] = mq_realign_sens(pwd,elpfile,hspfile,confile,mrkfile,bad_coil,realign_method);
                 MEMES3(pwd, grad_trans, headshape_downsampled, MRI_folder, 'best', [0.98:0.01:1.12], 5, []); % do not set a weighting for facial information
+                
                 % call MEMES3 (old version 2018)
                 %MEMES3_old_2018(pwd, elpfile, hspfile, confile, mrkfile, MRI_folder, bad_coil, 'best', [0.99:0.01:1.01], 5, 'yes')
+                
                 
                 % close the figures MEMES created (each subject creates 5
                 % figures - becomes too many when running in batch)
@@ -202,8 +200,6 @@ function source_v1
             fprintf('\nError in source_v1.m: Incorrect selection of MEMES version. Please specify at the top of the script.\n');
         end   
 
-% REMOVE THIS
-continue;
 
         %% Step 2: load this subject's ERF results
         %

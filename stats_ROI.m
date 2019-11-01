@@ -14,7 +14,7 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-clear all;
+%clear all;
 
 % run the #define section
 global ResultsFolder_ROI; % all subjects' ROI data are stored here
@@ -176,28 +176,51 @@ for k = 1:length(ROIs_label)
     % Run the statistical tests
     
     % Interaction (i.e. calc sw$ in each lang, then submit the 2 sw$ for comparison)
-    fprintf('\nNat vs Bi -> Testing valence x switch interaction:\n');
+    fprintf('\nNat vs Bi');
+    fprintf('\n  -> Testing valence x switch interaction:\n');
     [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.BiStay, data.BiSwitch);
     %cfg.latency = latency_cue; % time interval over which the experimental 
     [SwCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-    fprintf('\nNat vs Bi -> Testing valence x mix interaction:\n');
+    fprintf('\n  -> Testing valence x mix interaction:\n');
     [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.BiSingle, data.BiStay); %'2-1 vs 4-3');
     %cfg.latency = latency_target; % time interval over which the experimental 
     [MixCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
     
+    fprintf('\nNat vs Art');
+    fprintf('\n  -> Testing valence x switch interaction:\n');
+    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.ArtStay, data.ArtSwitch);
+    %cfg.latency = latency_cue; % time interval over which the experimental 
+    [SwCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
+    fprintf('\n  -> Testing valence x mix interaction:\n');
+    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.ArtSingle, data.ArtStay); %'2-1 vs 4-3');
+    %cfg.latency = latency_target; % time interval over which the experimental 
+    [MixCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
     
-    % Sanity Check - did we find a switch cost in Bivalent context?
+    % SANITY CHECK - did we find a switch cost in Bivalent context?
+    %%TODO%% We can use the same code below to unpack interactions:
     [Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
     [Bi_mix] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
     %[Nat_mix] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:}); 
-    
+
     % write any sig effects to file
-    fid = fopen([ResultsFolder_ROI_thisrun 'ROI_sanityCheck.txt'], 'wt');
+    fid = fopen([ResultsFolder_ROI_thisrun 'ROI_sanityCheck.txt'], 'at'); % open file for append
     if ~isempty(find(Bi_sw.mask))
-        fprintf(fid, ['Bivalent switch cost in' ROI_name ': length ' length(find(Bi_sw.mask)) '\n']);
+        start_sample = find(Bi_sw.mask, 1, 'first');
+        end_sample = find(Bi_sw.mask, 1, 'last');
+        pvalue = Bi_sw.prob(start_sample); % p-value is the same for all time points in a cluster, so we just read it from the first time point
+        start_time = Bi_sw.time(start_sample);
+        end_time = Bi_sw.time(end_sample);
+        fprintf(fid, 'Bivalent switch cost in %s, p = %.4f, between %.f~%.f ms (significant at samples %s).\n\n', ...
+            ROI_name, pvalue, start_time*1000, end_time*1000, int2str(find(Bi_sw.mask))); % convert units to ms
     end
     if ~isempty(find(Bi_mix.mask))
-        fprintf(fid, ['Bivalent mixing cost in' ROI_name ': length ' length(find(Bi_mix.mask)) '\n']);
+        start_sample = find(Bi_mix.mask, 1, 'first');
+        end_sample = find(Bi_mix.mask, 1, 'last');
+        pvalue = Bi_mix.prob(start_sample); % p-value is the same for all time points in a cluster, so we just read it from the first time point
+        start_time = Bi_mix.time(start_sample);
+        end_time = Bi_mix.time(end_sample);
+        fprintf(fid, 'Bivalent switch cost in %s, p = %.4f, between %.f~%.f ms (significant at samples %s).\n\n', ...
+            ROI_name, pvalue, start_time*1000, end_time*1000, int2str(find(Bi_mix.mask))); % convert units to ms    
     end    
     fclose(fid);
     
@@ -224,7 +247,7 @@ for k = 1:length(ROIs_label)
 %}
 end
 
-%save([ResultsFolder_ROI_thisrun 'stats.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi');
+%save([ResultsFolder_ROI_thisrun 'stats.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_art');
 
 
 %% Find the effects & plot them
@@ -245,7 +268,7 @@ ROIs_names = fieldnames(GA); % get the list of ROI names
 % b4 running stats (i.e. at single-subject level) - see my email for expla
 cfg = [];
 cfg.feedback = 'no';
-cfg.baseline = [-0.1 0];
+cfg.baseline = ROI_BASELINE; %[-0.1 0];
 for k = 1:length(ROIs_names) % each cycle handles one ROI
     ROI_name = ROIs_names{k};
     for j = 1:length(eventnames_real)
@@ -271,25 +294,46 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
 
         % do a GA plot for all contrasts that have an effect (will add gray box to show effect interval later)
         % also do a GA plot for all ROIs that don't have an effect (save in 'non-sig' folder); we don't need to plot the 3 contrasts for each ROI ('lang', 'ttype' & 'interaction') - they are the same, just plot one
-        if ( ~isempty(effect) || strcmp(stat_name(end-3:end), 'tion') ) % can't compare the whole word 'interaction' here, coz some stat_names (e.g. 'cue_lang') are a shorter string
+        if ( ~isempty(effect)) % || strcmp(stat_name(end-3:end), 'tion') ) % can't compare the whole word 'interaction' here, coz some stat_names (e.g. 'cue_lang') are a shorter string
             % GA plot
             figure('Name', [stat_name ' in ' ROI_name], 'Position', get(0, 'Screensize')); % make the figure full-screen size
             hold on;
             
-                % each cycle plots 1 line (ie. 1 condition)
-                for j = 1:length(eventnames_real)
-                    if strcmp(PLOT_SHADE, 'no') % do not plot shaded boundary, just plot a single line                  
-                        plot(GA.(ROI_name).(eventnames_real{j}).time, GA.(ROI_name).(eventnames_real{j}).avg); % 'color',colours{j});
-                    else % calc the margin for shaded boundary (stdev / sem / CI) at every time point
-                        allsubjects = GA_indi.(ROI_name).(eventnames_real{j}).individual;
-                        margin = calc_margin(allsubjects, PLOT_SHADE);
-                        
-                        % plot time course with shaded boundary
-                        boundedline(GA.(ROI_name).(eventnames_real{j}).time, GA.(ROI_name).(eventnames_real{j}).avg, margin(:), 'alpha', 'transparency',0.15, colours(j));                        
-                    end
+            % grab the conds that are relevant for this stat_name
+            type_of_cost = stat_name(1:2); % 'Sw' or 'Mix'
+            type_of_contrast = stat_name(end-9:end); % 'nat_vs_art' or 'nat_vs_bi'
+            if strcmp(type_of_cost, 'Sw') % SwCost
+                if strcmp(type_of_contrast, 'nat_vs_art')
+                    conds_to_plot = [1 2 4 5];
+                elseif strcmp(type_of_contrast, '_nat_vs_bi')
+                    conds_to_plot = [1 2 7 8];
                 end
+            elseif strcmp(type_of_cost, 'Mi') % MixCost
+                if strcmp(type_of_contrast, 'nat_vs_art')
+                    conds_to_plot = [1 3 4 6];
+                elseif strcmp(type_of_contrast, '_nat_vs_bi')
+                    conds_to_plot = [1 3 7 9];
+                end                
+            end
+            eventnames_subset = eventnames_real(conds_to_plot); 
+            colours_subset = colours(conds_to_plot);
+            lineTypes_subset = lineTypes(conds_to_plot);
+            
                 
-                xlim(PLOT_XLIM); 
+            % each cycle plots 1 line (ie. 1 condition)
+            for j = 1:length(eventnames_subset)
+                if strcmp(PLOT_SHADE, 'no') % do not plot shaded boundary, just plot a single line                  
+                    plot(GA.(ROI_name).(eventnames_subset{j}).time, GA.(ROI_name).(eventnames_subset{j}).avg, 'Color',colours_subset{j}, 'LineStyle',lineTypes_subset{j});
+                else % calc the margin for shaded boundary (stdev / sem / CI) at every time point
+                    allsubjects = GA_indi.(ROI_name).(eventnames_subset{j}).individual;
+                    margin = calc_margin(allsubjects, PLOT_SHADE);
+
+                    % plot time course with shaded boundary
+                    boundedline(GA.(ROI_name).(eventnames_subset{j}).time, GA.(ROI_name).(eventnames_subset{j}).avg, margin(:), 'alpha', 'transparency',0.15, colours(j));                        
+                end
+            end
+
+            xlim(PLOT_XLIM); 
             
             % set properties for axes, lines, and text
             xlabel('Seconds');
@@ -301,9 +345,8 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
             % each shaded patch as an item too). For some reason,
             % the order of the lines are reversed when you grab them
             lines = findall(gcf, 'Type','line');
-            legend([lines(9) lines(8) lines(7) lines(6) lines(5) lines(4) lines(3) lines(2) lines(1)], ...
-              {'NatStay', 'NatSwitch', 'NatSingle', 'ArtStay', 'ArtSwitch', 'ArtSingle', 'BiStay', 'BiSwitch', 'BiSingle'}, ...
-              'Location','northwest', 'FontSize',30);
+            legend([lines(4) lines(3) lines(2) lines(1)], ...
+              eventnames_subset, 'Location','northwest', 'FontSize',30);
             set(lines, 'Linewidth',3); % line thickness
                 
             % reference code:
@@ -379,7 +422,8 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
                     ylimits = ylim; ylow = ylimits(1); yhigh = ylimits(2);
                     x = [start_time end_time end_time start_time]; % specify x,y coordinates of the 4 corners
                     y = [ylow ylow yhigh yhigh];
-                    patch(x,y,'black', 'FaceAlpha',0.15) % draw the shade (FaceAlpha is transparency)
+                    patch(x,y,'black', 'FaceAlpha',0.15, 'HandleVisibility','off') % draw the shade 
+                        % (FaceAlpha is transparency; turn off HandleVisibility so it won't show up in the legends)
                     ylim(ylimits); % ensure ylim doesn't get expanded
                 end
 
@@ -389,7 +433,7 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
                 % save the figure
                 filename = [ROI_name '_' stat_name '.png'];
                 %saveas(gcf, [ResultsFolder_ROI_thisrun 'Figures\\' filename]); % this fn does not maintain the aspect ratio, font size, etc
-                export_fig(gcf,[ResultsFolder_ROI_thisrun 'Figures\\' filename]); % use this tool to save the figure exactly as shown on screen
+                export_fig(gcf, [ResultsFolder_ROI_thisrun 'Figures\\' filename]); % use this tool to save the figure exactly as shown on screen
                 
                 % old code to check multiple clusters
                 %{
