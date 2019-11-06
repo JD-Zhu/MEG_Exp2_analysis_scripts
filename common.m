@@ -12,10 +12,10 @@ function [] = common()
     
     %DataFolder = '..\\Data\\';
     %ResultsFolder = '..\\Results\\';
-    DataFolder = [pwd '\\..\\..\\6_MEG-data\\RAW_DATA\\'];
-    ResultsFolder = [pwd '\\..\\..\\6_MEG-data\\results_ERF\\']; % all subjects' erf data will be stored here
+    DataFolder = [pwd '\\..\\..\\6_MEG-data\\RAW_DATA\\']; % this directory should contain all the SubjectFolders
+    ResultsFolder = [pwd '\\..\\..\\6_MEG-data\\results_ERF\\']; % all subjects' ERF results will be stored here
     ResultsFolder_ROI = [pwd '\\..\\..\\6_MEG-data\\results_ROI\\']; % all subjects' ROI source-reconstruction results will be stored here
-    ResultsFolder_Source = [pwd '\\..\\..\\6_MEG-data\\results_SOURCE\\']; % all subjects' source localisation results
+    ResultsFolder_Source = [pwd '\\..\\..\\6_MEG-data\\results_SOURCE\\']; % all subjects' source localisation results will be stored here
     
     global filename_suffix; % select which pre-processing option: noPCA, reject components 1:3, or normal (reject components 1:5)
     % also need to change the last few lines in reject_response_component.m & load correct result files into the ResultsFolder
@@ -90,7 +90,8 @@ function [] = common()
     % Options: 'no', 'SEM', 'STDEV', 'CI_95'
     % (note: SEM < 95% CI < STDEV)
     global PLOT_SHADE;
-    PLOT_SHADE = 'no'; %'SEM';
+    PLOT_SHADE = 'SEM';
+    PLOT_SHADE = 'no'; % TEMP FIX - bounded_lines throws an error in stats_ROI!
 
     % Do we want to use a combination of diff colours & line types to
     % distinguish btwn conds? if no, we'll only use diff colours

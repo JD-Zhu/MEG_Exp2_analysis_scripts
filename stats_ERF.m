@@ -1,9 +1,15 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% stats_ERF.m
 %
 % Author: Judy Zhu (github.com/JD-Zhu)
 %
+% Grand average & statistical analysis on sensor-space ERFs.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 close all;
-clear all;
+%clear all;
 
 
 % = Settings =
@@ -97,6 +103,7 @@ for j = 1:length(eventnames_real)
     % "{:}" means to use data from all elements of the variable
 end
 
+% save the GA files
 GA_output_file = [ResultsFolder_thisrun 'GA_avg.mat'];
 if (exist(GA_output_file, 'file') ~= 2) 
     save(GA_output_file, 'GA_erf');

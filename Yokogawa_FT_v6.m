@@ -524,7 +524,7 @@ for i = 1:length(SubjectIDs)
         end
         
         % in cleaned data (compute erfs & cov matrices)
-        [erf_clean, erf_allconds] = compute_ERF(trials_clean);
+        [erf_clean, erf_allconds] = compute_ERF(trials_clean, true);
 
         % Do not perform baseline correction here, because it will remove the cov matrix from the timelock output:
         % "baseline correction invalidates previous covariance estimate, removing cov"

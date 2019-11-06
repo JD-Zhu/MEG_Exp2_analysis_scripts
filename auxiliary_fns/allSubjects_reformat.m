@@ -10,13 +10,13 @@
 %
 % Author: Judy Zhu (github.com/JD-Zhu)
 %
-function allSubjects_ROIs_byCondition = allSubjects_reformat(allSubjects_ROIs_bySubjects, ROI_name, eventnames_8)
+function allSubjects_ROIs_byCondition = allSubjects_reformat(allSubjects_ROIs_bySubjects, ROI_name, eventnames_real)
     % each cycle processes one condition
-    for j = 1:length(eventnames_8)
-        allSubjects_ROIs_byCondition.(eventnames_8{j}) = {}; % initialise the array of subjects for this cond
+    for j = 1:length(eventnames_real)
+        allSubjects_ROIs_byCondition.(eventnames_real{j}) = {}; % initialise the array of subjects for this cond
         % loop thru all subjects & extract their ROI activity in this condition
         for i = 1:length(allSubjects_ROIs_bySubjects)
-           allSubjects_ROIs_byCondition.(eventnames_8{j}) = [allSubjects_ROIs_byCondition.(eventnames_8{j}) allSubjects_ROIs_bySubjects(i).(ROI_name).(eventnames_8{j})];
+           allSubjects_ROIs_byCondition.(eventnames_real{j}) = [allSubjects_ROIs_byCondition.(eventnames_real{j}) allSubjects_ROIs_bySubjects(i).(ROI_name).(eventnames_real{j})];
         end
     end    
 end

@@ -1,25 +1,21 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% stats_ROI.m
+% stats_ERF_EMSf.m
 %
 % Author: Judy Zhu (github.com/JD-Zhu)
 %
-% Grand average & statistical analysis on reconstructed ROI activities
+% Grand average & statistical analysis on sensor-space ERFs.
 %
-%    Q1: do stats across subjects?
-%    A: yes. Plot grand ave first, just to get an idea of what effect is there. Then run stats.
-%
-%    Q2. use ft_timelockstatistics (exactly the same way as doing stats on erf)?
-%    A: yes.
-%    (but ft_timelockstats takes in erf structures, here we don't have the .avg field, just naked data)
-%    A: either hack it into that format, or use EEGlab (statcond, std_stat).
+% Instead of having channel x time ERFs, we have collapsed the channel dimension
+% using Effect-Matched Spatial filter (EMSf). So the "ERF" here is just 1
+% time course for each subject (similar to the reconstructed activity in 1 ROI).
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %clear all;
 
 % run the #define section
-global ResultsFolder_ROI; % all subjects' ROI data are stored here
+global ResultsFolder; % all subjects' ERF data are stored here
 
 global eventnames_real; global colours_and_lineTypes; 
 global colours; global lineTypes;
@@ -29,21 +25,25 @@ common();
 
 
 % SELECT which set of single-subject ERFs to use
-run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
-ResultsFolder_ROI_thisrun = [ResultsFolder_ROI run_name '\\'];
+run_name = 'TSPCA10000_3_EMSf'; % this should be a folder name inside the "Results_ERF" folder
+ResultsFolder_thisrun = [ResultsFolder run_name '\\'];
 
 
 %% Read data
 
-% find all .mat files in ResultsFolder_ROI_thisrun
-files = dir([ResultsFolder_ROI_thisrun '*_ROI.mat']);
+% find all .mat files in ResultsFolder_thisrun
+files = dir([ResultsFolder_thisrun '*_erf.mat']);
 
 % each cycle reads in one '.mat' file (ie. one subject's ROI results)
 for i = 1:length(files)
-    filename = [ResultsFolder_ROI_thisrun files(i).name];
+    filename = [ResultsFolder_thisrun files(i).name];
     load(filename);
-    allSubjects_ROIs_bySubjects(i) = ROI_activity;
+    allSubjects_ROIs_bySubjects(i).EMSf = erf_clean; % pretend the "EMSf" is an ROI
 end
+
+
+%%% ===== Everything below is exactly the same as in stats_ROI.m (except commented out some statistical tests) ===== %%%
+
 
 % get a list of all the ROI labels
 ROIs_label = fieldnames(allSubjects_ROIs_bySubjects(1));
@@ -105,11 +105,11 @@ for k = 1:length(ROIs_label)
 end
 
 % save the GA files
-GA_output_file = [ResultsFolder_ROI_thisrun 'GA_avg.mat'];
+GA_output_file = [ResultsFolder_thisrun 'GA_avg.mat'];
 if (exist(GA_output_file, 'file') ~= 2) 
     save(GA_output_file, 'GA');
 end
-GA_output_file = [ResultsFolder_ROI_thisrun 'GA_individuals.mat'];
+GA_output_file = [ResultsFolder_thisrun 'GA_individuals.mat'];
 if (exist(GA_output_file, 'file') ~= 2) 
     save(GA_output_file, 'GA_indi');
 end
@@ -172,7 +172,7 @@ for k = 1:length(ROIs_label)
     cfg.ivar  = 2; % row of design matrix that contains independent variable (i.e. the conditions)
 
     % Run the statistical tests
-    
+%{    
     % INTERACTION (i.e. calc sw$ in each context, then submit the 2 sw$ for comparison)
     fprintf('\nNat vs Bi');
     fprintf('\n  -> Testing valence x switch interaction:\n');
@@ -203,15 +203,15 @@ for k = 1:length(ROIs_label)
     [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.ArtSingle, data.ArtStay); %'2-1 vs 4-3');
     %cfg.latency = latency_target; % time interval over which the experimental 
     [MixCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-    
+%}    
     % SANITY CHECK - did we find a switch cost in Bivalent context?
     %%TODO%% We can use the same code below to unpack interactions:
-    [Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
-    [Bi_mix] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
+    [Bi_sw] = ft_timelockstatistics(cfg, data.Stay{:}, data.Switch{:}); 
+    %[Bi_mix] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
     %[Nat_mix] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:}); 
 
     % write any sig effects to file
-    fid = fopen([ResultsFolder_ROI_thisrun 'ROI_sanityCheck.txt'], 'at'); % open file for append
+    fid = fopen([ResultsFolder_thisrun 'ROI_sanityCheck.txt'], 'at'); % open file for append
     if ~isempty(find(Bi_sw.mask))
         start_sample = find(Bi_sw.mask, 1, 'first');
         end_sample = find(Bi_sw.mask, 1, 'last');
@@ -221,6 +221,7 @@ for k = 1:length(ROIs_label)
         fprintf(fid, 'Bivalent switch cost in %s, p = %.4f, between %.f~%.f ms (significant at samples %s).\n\n', ...
             ROI_name, pvalue, start_time*1000, end_time*1000, int2str(find(Bi_sw.mask))); % convert units to ms
     end
+    %{
     if ~isempty(find(Bi_mix.mask))
         start_sample = find(Bi_mix.mask, 1, 'first');
         end_sample = find(Bi_mix.mask, 1, 'last');
@@ -252,22 +253,22 @@ for k = 1:length(ROIs_label)
     [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_13vs24', data.targetchstay, data.targetchswitch, data.targetenstay, data.targetenswitch); %'2-1 vs 4-3');
     %cfg.latency = latency_target; % time interval over which the experimental 
     [target_ttype.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-
+%}
 end
 
-%save([ResultsFolder_ROI_thisrun 'stats.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi', 'SwCost_art_vs_bi', 'MixCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_art');
+%save([ResultsFolder_thisrun 'stats.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi', 'SwCost_art_vs_bi', 'MixCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_art');
 
 
 %% Find the effects & plot them
 % Automatically check all the stats output & read out the time interval
 % of each effect (from the stat.mask field)
 
-stats = load([ResultsFolder_ROI_thisrun 'stats.mat']);
-load([ResultsFolder_ROI_thisrun 'GA.mat']);
-load([ResultsFolder_ROI_thisrun 'GA_individuals.mat']);
+stats = load([ResultsFolder_thisrun 'stats.mat']);
+load([ResultsFolder_thisrun 'GA.mat']);
+load([ResultsFolder_thisrun 'GA_individuals.mat']);
 
 % make directory to store the output figures
-mkdir([ResultsFolder_ROI_thisrun 'Figures\\non-sig\\']);
+mkdir([ResultsFolder_thisrun 'Figures\\non-sig\\']);
 
 ROIs_names = fieldnames(GA); % get the list of ROI names
 
@@ -383,7 +384,7 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
 
                 filename = [ROI_name '_' stat_name(1:3) '.png'];
                 %saveas(gcf, [ResultsFolder_ROI_thisrun 'Figures\\non-sig\\' filename]); % this fn does not maintain the aspect ratio, font size, etc
-                export_fig(gcf, [ResultsFolder_ROI_thisrun 'Figures\\non-sig\\' filename]); % use this tool to save the figure exactly as shown on screen
+                export_fig(gcf, [ResultsFolder_thisrun 'Figures\\non-sig\\' filename]); % use this tool to save the figure exactly as shown on screen
 
             else % if there is any effect present, find all the clusters so we can output to console & mark on the plot
 
@@ -447,7 +448,7 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
                 % save the figure
                 filename = [ROI_name '_' stat_name '.png'];
                 %saveas(gcf, [ResultsFolder_ROI_thisrun 'Figures\\' filename]); % this fn does not maintain the aspect ratio, font size, etc
-                export_fig(gcf, [ResultsFolder_ROI_thisrun 'Figures\\' filename]); % use this tool to save the figure exactly as shown on screen
+                export_fig(gcf, [ResultsFolder_thisrun 'Figures\\' filename]); % use this tool to save the figure exactly as shown on screen
                 
                 % old code to check multiple clusters
                 %{

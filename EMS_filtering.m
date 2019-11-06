@@ -15,8 +15,7 @@ run_name = 'TSPCA10000_3';
 
 % run the #define section
 global DataFolder; global ResultsFolder; global filename_suffix; 
-global eventnames_real; global collapse_across_langs;
-global colours;
+%global eventnames_real; global collapse_across_langs; global colours;
 common();
 
 % where to read in the processed data for each subject
@@ -27,6 +26,10 @@ S2_output_filename = ['S2_after_visual_rejection' filename_suffix '.mat']; % Sta
 ResultsFolder_thisrun = [ResultsFolder run_name '_EMSf' '\\']; % ERF results for all subjects
 mkdir(ResultsFolder_thisrun);
 S3_output_filename = ['_erf' filename_suffix '.mat'];
+
+% where to save the figures
+Figures_dir = [ResultsFolder_thisrun 'Figures_EMSf\\'];
+mkdir(Figures_dir);
 
 % add the EMSf toolbox to Matlab search path
 % DO NOT use genpath(), only add the root dir. Otherwise it causes name conflict with the 'nearest' fn in FT
@@ -75,22 +78,31 @@ for i = 1:length(SubjectIDs)
 
         % call EMS-filtering
         [trl, msf] = ems_2cond_diff(data, conds, []);
+        
+        % use the surrogate time courses (1 per trial, obtained from EMSf)
+        % to replace the data in all_blocks_clean
+        all_blocks_clean_EMSf = all_blocks_clean; % firstly, copy the structure
+        for n = 1:size(trl,1) % each cycle copies 1 trial
+            all_blocks_clean_EMSf.trial{n} = trl(n,:);
+        end
+        assert(n == length(all_blocks_clean_EMSf.trial)); % make sure all trials have been replaced
+        all_blocks_clean_EMSf.label = {'EMSf'}; % update the label field, or else ft_checkdata below will fail
 
-
+        
         %% Average across trials to compute ERF
         trials_clean = [];
 
         cfg = [];
         cfg.trials = stay_trials;
-        trials_clean.Stay = ft_redefinetrial(cfg, all_blocks_clean);
+        trials_clean.Stay = ft_redefinetrial(cfg, all_blocks_clean_EMSf);
         cfg = [];
         cfg.trials = switch_trials;
-        trials_clean.Switch = ft_redefinetrial(cfg, all_blocks_clean);
+        trials_clean.Switch = ft_redefinetrial(cfg, all_blocks_clean_EMSf);
         %{
         for j = 1:length(eventnames_real)
             cfg = [];
             cfg.trials = events_allBlocks.(eventnames_real{j});
-            trials_clean.(eventnames_real{j}) = ft_redefinetrial(cfg, all_blocks_clean);
+            trials_clean.(eventnames_real{j}) = ft_redefinetrial(cfg, all_blocks_clean_EMSf);
         end
         %}
 
@@ -99,7 +111,7 @@ for i = 1:length(SubjectIDs)
         % compute_ERF (which is meant to use the FT 'nearest' fn)
         %rmpath('C:\Users\43606024\Documents\MATLAB\emsf-emsf_matlab-75c285db6472');
 
-        [erf_clean, erf_allconds] = compute_ERF(trials_clean);   
+        [erf_clean, erf_allconds] = compute_ERF(trials_clean, false);   
 
         % SAVE all relevant variables from the workspace
         save(S3_output_file, 'SubjectFolder', 'run_name', ...
@@ -109,24 +121,30 @@ for i = 1:length(SubjectIDs)
     end
 
     
-    % === Plot ERF & GFP (can use this to regen all plots from saved erf results) ===
-    load('lay.mat');
-    plot_ERF_general([], erf_clean, erf_allconds, lay, false, true, false);
+    %% What to do with the output?
+    % 1. Plot the surrogate time course for each cond (after avg'ing)
+    %load('lay.mat');
+    %plot_ERF_general([], erf_clean, erf_allconds, lay, false, false, false);
+    
+    conds = fieldnames(erf_clean); % grab the list of conds
+    
+    figure('Name', SubjectID); hold on;
+    for j = 1:length(conds)
+        plot(erf_clean.(conds{j}).time, erf_clean.(conds{j}).avg);
+    end
+    legend(conds);
+    hold off;
 
     % save the plot as an image
-    png_output_file = [ResultsFolder_thisrun 'Figures_GFP\\' SubjectID '_GFP.png'];
+    png_output_file = [Figures_dir SubjectID '_EMSf.png'];
     if (exist(png_output_file, 'file') ~= 2) 
         saveas(gcf, png_output_file);
     end
-
-
-    %% TODO %%
-    % 1. Run stats across all subjects
     
     
-    % 2. we can also plot the spatial filter using ems_topo_explore.
+    % 2. We can also plot the spatial filter using ems_topo_explore.
     % More things to do? see:
     % https://bitbucket.org/emsf/emsf_matlab/src/default/readme.txt
-        
-
+    
 end
+        

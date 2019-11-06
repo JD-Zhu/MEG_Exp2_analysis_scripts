@@ -1,6 +1,10 @@
 % Computes ERFs & covariance matrices for by-condition data, combined cue & combined target
-
-function [erf_clean, erf_allconds] = compute_ERF (trials_clean)
+%
+% @param trials_clean: a struct containing all the conds (each cond is one
+%     field, which contains data for all trials belonging to this cond)
+% @param CALC_COV:     whether to calculate the covariance matrix
+%
+function [erf_clean, erf_allconds] = compute_ERF (trials_clean, CALC_COV)
     % run the #define section
     %global conds_cue; global conds_target; 
     %global conds;
@@ -33,8 +37,10 @@ function [erf_clean, erf_allconds] = compute_ERF (trials_clean)
     trials_clean_allconds = ft_appenddata([], cellarray{:});
 
     cfg                  = [];
-    cfg.covariance       = 'yes';
-    cfg.covariancewindow = [0 0.5]; % do not include any period after vocal response onset
+    if (CALC_COV)
+        cfg.covariance       = 'yes';
+        cfg.covariancewindow = [0 0.5]; % do not include any period after vocal response onset
+    end
     erf_allconds  = ft_timelockanalysis(cfg, trials_clean_allconds);
 
     % Alternative method (not sure if this is 100% correct)
