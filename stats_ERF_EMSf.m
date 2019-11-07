@@ -42,7 +42,8 @@ for i = 1:length(files)
 end
 
 
-%%% ===== Everything below is exactly the same as in stats_ROI.m (except commented out some statistical tests) ===== %%%
+%%% =====  Everything below is same as in stats_ROI.m   ===== %%%
+%%% ===== (but note that stats_ROI.m itself may change) ===== %%%
 
 
 % get a list of all the ROI labels

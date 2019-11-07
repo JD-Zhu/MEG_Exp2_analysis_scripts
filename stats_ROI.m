@@ -115,6 +115,56 @@ if (exist(GA_output_file, 'file') ~= 2)
 end
 
 
+%% [WIP] Statistical analysis (ANOVA in SPM)
+%{
+fprintf('\n= STATS: ANOVA in SPM =\n');
+
+% each cycle processes one ROI
+for k = 1:length(ROIs_label)
+    
+    ROI_name = ROIs_label{k};
+    fprintf(['\nROI: ' ROI_name '\n']);
+
+    data = allSubjects_ROIs.(ROI_name); % data for the current ROI
+    data_SPM = [];
+    
+    % Convert FT data to SPM format
+    %spm eeg; 
+    spm('defaults', 'eeg'); % make sure the path is correct
+    
+    conds = fieldnames(data);
+    for j = 1:length(conds) % each cycle handles one cond
+        for i = 1:length(data.(conds{j})) % each cycle handles one subject
+            data_SPM.(conds{j}){i} = spm_eeg_ft2spm(data.(conds{j}){i}, [ResultsFolder_ROI_thisrun '\\SPM_temp\\' ROI_name '_' conds{j} '_subj' num2str(i)]);
+        end
+    end
+    
+    % Robert's resting state analysis:
+    %{
+    for sub = 1:length(subject)
+        fprintf('Reorganising data for %s\n',subject{sub});
+        try
+            for i = 1:1
+                load(['VE_rs_' num2str(i) '.mat']);
+                disp('FT --> SPM...');
+                spm_eeg_ft2spm(VE,['VE_SPM_' num2str(i)]);
+                clear VE
+            end
+
+        catch
+            warning('!!!');
+            fprintf('Subject %s could not be processed\n',subject{sub});
+        end
+    end
+    %}
+
+    % Then convert to images using the ‘source option’ in spm_eeg_convert2images
+
+    % You can then build your model with the GUI.
+
+end
+%}
+
 %% Statistical analysis (to identify time interval of each effect, i.e. temporal clusters)
 
 fprintf('\n= STATS: CLUSTER-BASED PERMUTATION TESTS =\n');
@@ -205,34 +255,35 @@ for k = 1:length(ROIs_label)
     [MixCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
     
     % SANITY CHECK - did we find a switch cost in Bivalent context?
-    %%TODO%% We can use the same code below to unpack interactions:
-    [Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
-    [Bi_mix] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
-    %[Nat_mix] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:}); 
+    % (we can use the same code below to unpack interactions)
+    [stats_pairwise.Bi_sw.(ROI_name)] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
+    [stats_pairwise.Bi_mix.(ROI_name)] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
+    %
+    [stats_pairwise.Nat_sw.(ROI_name)] = ft_timelockstatistics(cfg, data.NatStay{:}, data.NatSwitch{:}); 
+    [stats_pairwise.Nat_mix.(ROI_name)] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:}); 
+    [stats_pairwise.Art_sw.(ROI_name)] = ft_timelockstatistics(cfg, data.ArtStay{:}, data.ArtSwitch{:}); 
+    [stats_pairwise.Art_mix.(ROI_name)] = ft_timelockstatistics(cfg, data.ArtSingle{:}, data.ArtStay{:}); 
+    %
+    
+    contrasts = fieldnames(stats_pairwise);
 
     % write any sig effects to file
     fid = fopen([ResultsFolder_ROI_thisrun 'ROI_sanityCheck.txt'], 'at'); % open file for append
-    if ~isempty(find(Bi_sw.mask))
-        start_sample = find(Bi_sw.mask, 1, 'first');
-        end_sample = find(Bi_sw.mask, 1, 'last');
-        pvalue = Bi_sw.prob(start_sample); % p-value is the same for all time points in a cluster, so we just read it from the first time point
-        start_time = Bi_sw.time(start_sample);
-        end_time = Bi_sw.time(end_sample);
-        fprintf(fid, 'Bivalent switch cost in %s, p = %.4f, between %.f~%.f ms (significant at samples %s).\n\n', ...
-            ROI_name, pvalue, start_time*1000, end_time*1000, int2str(find(Bi_sw.mask))); % convert units to ms
-    end
-    if ~isempty(find(Bi_mix.mask))
-        start_sample = find(Bi_mix.mask, 1, 'first');
-        end_sample = find(Bi_mix.mask, 1, 'last');
-        pvalue = Bi_mix.prob(start_sample); % p-value is the same for all time points in a cluster, so we just read it from the first time point
-        start_time = Bi_mix.time(start_sample);
-        end_time = Bi_mix.time(end_sample);
-        fprintf(fid, 'Bivalent mixing cost in %s, p = %.4f, between %.f~%.f ms (significant at samples %s).\n\n', ...
-            ROI_name, pvalue, start_time*1000, end_time*1000, int2str(find(Bi_mix.mask))); % convert units to ms    
-    end    
+    for i = 1:length(contrasts)
+        stat = stats_pairwise.(contrasts{i}).(ROI_name);
+        if ~isempty(find(stat.mask))
+            start_sample = find(stat.mask, 1, 'first');
+            end_sample = find(stat.mask, 1, 'last');
+            pvalue = stat.prob(start_sample); % p-value is the same for all time points in a cluster, so we just read it from the first time point
+            start_time = stat.time(start_sample);
+            end_time = stat.time(end_sample);
+            fprintf(fid, '%s in %s, p = %.4f, between %.f~%.f ms (significant at samples %s).\n\n', ...
+                contrasts{i}, ROI_name, pvalue, start_time*1000, end_time*1000, int2str(find(stat.mask))); % convert units to ms
+        end
+    end   
     fclose(fid);
     
-    
+%{    
     % MAIN EFFECT of context (collapsed across stay-switch-single)
     fprintf('\nCUE window -> Main effect of context:\n');
     [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_12vs34', data.cuechstay, data.cuechswitch, data.cueenstay, data.cueenswitch);
@@ -252,10 +303,11 @@ for k = 1:length(ROIs_label)
     [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_13vs24', data.targetchstay, data.targetchswitch, data.targetenstay, data.targetenswitch); %'2-1 vs 4-3');
     %cfg.latency = latency_target; % time interval over which the experimental 
     [target_ttype.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-
+%}
 end
 
 %save([ResultsFolder_ROI_thisrun 'stats.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi', 'SwCost_art_vs_bi', 'MixCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_art');
+%save([ResultsFolder_ROI_thisrun 'stats_pairwise.mat'], 'stats_pairwise');
 
 
 %% Find the effects & plot them
@@ -263,7 +315,7 @@ end
 % of each effect (from the stat.mask field)
 
 stats = load([ResultsFolder_ROI_thisrun 'stats.mat']);
-load([ResultsFolder_ROI_thisrun 'GA.mat']);
+load([ResultsFolder_ROI_thisrun 'GA_avg.mat']);
 load([ResultsFolder_ROI_thisrun 'GA_individuals.mat']);
 
 % make directory to store the output figures
