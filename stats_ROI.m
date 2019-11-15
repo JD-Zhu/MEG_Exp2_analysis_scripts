@@ -116,7 +116,7 @@ end
 
 
 %% [WIP] Statistical analysis (ANOVA in SPM)
-%{
+%
 fprintf('\n= STATS: ANOVA in SPM =\n');
 
 % each cycle processes one ROI
@@ -126,7 +126,7 @@ for k = 1:length(ROIs_label)
     fprintf(['\nROI: ' ROI_name '\n']);
 
     data = allSubjects_ROIs.(ROI_name); % data for the current ROI
-    data_SPM = [];
+    %data_SPM = [];
     
     % Convert FT data to SPM format
     %spm eeg; 
@@ -135,7 +135,22 @@ for k = 1:length(ROIs_label)
     conds = fieldnames(data);
     for j = 1:length(conds) % each cycle handles one cond
         for i = 1:length(data.(conds{j})) % each cycle handles one subject
-            data_SPM.(conds{j}){i} = spm_eeg_ft2spm(data.(conds{j}){i}, [ResultsFolder_ROI_thisrun '\\SPM_temp\\' ROI_name '_' conds{j} '_subj' num2str(i)]);
+            SPM_filename = [ResultsFolder_ROI_thisrun '\\SPM_temp\\' ROI_name '_' conds{j} '_subj' num2str(i)];
+            
+            %data_SPM.(conds{j}){i} = 
+            spm_eeg_ft2spm(data.(conds{j}){i}, SPM_filename);
+
+            % change the type (or else it will throw an error)
+            D = spm_eeg_load(SPM_filename);
+            D = type(D, 'evoked');
+            save([SPM_filename '_evoked.mat'], 'D');
+            
+            % Then convert to images using spm_eeg_convert2images
+            S.D = [SPM_filename '_evoked.mat'];
+            S.mode = 'time';
+            %S.conditions = ; (default == all) % you can put multiple conditions in the same SPM object
+            %S.timewin   (default == [-Inf Inf]) % we'll keep the whole time window, i.e. -200 ~ 750
+            [images, outroot] = spm_eeg_convert2images(S);
         end
     end
     
@@ -158,9 +173,15 @@ for k = 1:length(ROIs_label)
     end
     %}
 
-    % Then convert to images using the ‘source option’ in spm_eeg_convert2images
 
-    % You can then build your model with the GUI.
+
+    %TODO% 
+    % Now all the images have been saved in "SPM_Temp" (in all the "..._evoked" folders).
+    % You can now open SPM gui, and build your 3x3 model.
+    % You might want to reorganise the saved files, to make it easier to
+    % load into SPM gui. Can prob specify conditions when calling
+    % spm_eeg_convert2images, so that not just a single cond resides in
+    % each "..._evoked" folder.
 
 end
 %}

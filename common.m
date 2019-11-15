@@ -137,5 +137,8 @@ function [] = common()
     % toolbox to save figure exactly as it appears on screen
     addpath(genpath('C:\Users\Judy\Documents\MATLAB\altmany-export_fig-9676767'));
     addpath(genpath('C:\Users\43606024\Documents\MATLAB\altmany-export_fig-9676767'));
+    
+    % SPM toolbox - for 3x3 ANOVA
+    addpath('C:\Users\43606024\Documents\MATLAB\spm12');
 
 end

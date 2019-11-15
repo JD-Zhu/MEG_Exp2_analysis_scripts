@@ -45,6 +45,7 @@ function source_v1
     run_name = 'TSPCA10000_3';
     ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all subjects
     ResultsFolder_ROI_thisrun = [ResultsFolder_ROI run_name '\\']; % ERF results for all subjects
+    ResultsFolder_Source_thisrun = [ResultsFolder_Source run_name '\\']; % ERF results for all subjects
 
     
     % = Save files =
@@ -366,7 +367,7 @@ function source_v1
             cfg.headmodel       = headmodel; % individual headmodel (from coreg)
             %cfg.lcmv.lamda      = '5%';
             cfg.lcmv.lamda      = '100%'; % regularisation parameter - set to 1 here coz our data is rank-reduced (due to rejecting ICA comps)
-            cfg.lcmv.fixedori   = 'yes';
+            cfg.lcmv.fixedori   = 'yes'; % ensures the orientation for all dipoles are aligned
             cfg.lcmv.keepfilter = 'yes';
             cfg.lcmv.projectmom = 'no';
             cfg.lcmv.normalize  = 'yes'; %corrects for depth bias?
@@ -436,10 +437,10 @@ function source_v1
             template_mri.coordsys = 'nifti_spm'; % so that FieldTrip knows how to interpret the coordinate system
 
             % localise the source of each effect (ie. location in the brain that shows strongest diff btwn the 2 conds)
-            save_filename = [ResultsFolder_Source 'cue_ttype\\' SubjectID];
+            save_filename = [ResultsFolder_Source_thisrun 'cue_ttype\\' SubjectID];
             localise_effect_source(source_cue_stay, source_cue_switch, template_sourcemodel, template_mri, save_filename);
 
-            save_filename = [ResultsFolder_Source 'target_lang\\' SubjectID];
+            save_filename = [ResultsFolder_Source_thisrun 'target_lang\\' SubjectID];
             localise_effect_source(source_target_ch, source_target_en, template_sourcemodel, template_mri, save_filename);
         end
 
