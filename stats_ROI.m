@@ -126,10 +126,8 @@ for k = 1:length(ROIs_label)
     fprintf(['\nROI: ' ROI_name '\n']);
 
     data = allSubjects_ROIs.(ROI_name); % data for the current ROI
-    %data_SPM = [];
     
     % Convert FT data to SPM format
-    %spm eeg; 
     spm('defaults', 'eeg'); % make sure the path is correct
     
     conds = fieldnames(data);
@@ -137,7 +135,6 @@ for k = 1:length(ROIs_label)
         for i = 1:length(data.(conds{j})) % each cycle handles one subject
             SPM_filename = [ResultsFolder_ROI_thisrun '\\SPM_temp\\' ROI_name '_' conds{j} '_subj' num2str(i)];
             
-            %data_SPM.(conds{j}){i} = 
             spm_eeg_ft2spm(data.(conds{j}){i}, SPM_filename);
 
             % change the type (or else it will throw an error)
@@ -153,38 +150,12 @@ for k = 1:length(ROIs_label)
             [images, outroot] = spm_eeg_convert2images(S);
         end
     end
-    
-    % Robert's resting state analysis:
-    %{
-    for sub = 1:length(subject)
-        fprintf('Reorganising data for %s\n',subject{sub});
-        try
-            for i = 1:1
-                load(['VE_rs_' num2str(i) '.mat']);
-                disp('FT --> SPM...');
-                spm_eeg_ft2spm(VE,['VE_SPM_' num2str(i)]);
-                clear VE
-            end
-
-        catch
-            warning('!!!');
-            fprintf('Subject %s could not be processed\n',subject{sub});
-        end
-    end
-    %}
-
-
-
-    %TODO% 
-    % Now all the images have been saved in "SPM_Temp" (in all the "..._evoked" folders).
-    % You can now open SPM gui, and build your 3x3 model.
-    % You might want to reorganise the saved files, to make it easier to
-    % load into SPM gui. Can prob specify conditions when calling
-    % spm_eeg_convert2images, so that not just a single cond resides in
-    % each "..._evoked" folder.
-
 end
-%}
+
+% Now all the images have been saved in "SPM_Temp" (in all the "..._evoked" folders).
+% You can now open SPM gui, and build your 3x3 model.
+% Altenatively: to use the saved batch scripts, run "SPM_batch.m".
+
 
 %% Statistical analysis (to identify time interval of each effect, i.e. temporal clusters)
 
