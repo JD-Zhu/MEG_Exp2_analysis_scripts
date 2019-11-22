@@ -53,6 +53,7 @@ function source_v1
     % filename for saving the beamformer output (to avoid running the whole thing every time)
     %Beamformer_output_filename = 'beamformer_Chinese.mat'; % In this version: cfg.lcmv.lamda = '5%'; 
     Beamformer_output_filename = 'beamformer_Chinese_lambda=1.mat'; 
+    %Beamformer_output_filename = 'beamformer_fixedori=no.mat'; 
     
     % To save a different version of beamformer results (e.g. when using 
     % a new set of ERF outputs), simply change this filename.
