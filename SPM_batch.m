@@ -119,7 +119,7 @@ for k = 1:length(ROIs_label)
 end
     
 % delete the temp file we created earlier
-delete results_dir.mat
+%delete results_dir.mat
 
 
 
