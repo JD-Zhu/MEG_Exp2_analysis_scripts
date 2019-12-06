@@ -1,6 +1,9 @@
 % You can use this script to plot the source activity timecourse in a single subject.
 % "Source activity" can be for an ROI (i.e. virtual sensor), or for a single vertex,
 % just load the desired source timecourse into the VE variable
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
 
 % SELECT which ROI/vertex to plot
 VE = ROI_activity.LIFG; % load the ROI output file (e.g. A01-XC-3489_ROI.mat) first

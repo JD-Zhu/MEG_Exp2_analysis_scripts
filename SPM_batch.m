@@ -1,11 +1,20 @@
+% Automatic script to complete the first 2 steps in SPM GUI:
+% "Specify 2nd-level" & "Estimate"
+%
+% Author: Judy Zhu (github.com/JD-Zhu)
+%
+%=========================================================================%
 % Which model? (Full factorial / Flexible factorial)
 which_model = 'flexible'; % 'full';
 
-% Select input folder (where to read in the images)
-image_dir = 'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3\SPM_temp\';
+% Select INPUT folder (where to read in the images)
+image_dir = 'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3_freeori\SPM_temp\';
 
-% Select output folder (output files will be saved here)
-results_dir = 'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3\SPM_results\';
+% Select OUTPUT folder (output files will be saved here)
+results_dir = 'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3_freeori\SPM_results\';
+mkdir(results_dir);
+% REMEMBER to update the "results_dir" path in SPM_specify_model_job.m & 
+% SPM_estimate_model_job.m. This path should be the same in all 3 scripts!!
 
 %=========================================================================%
 
@@ -41,10 +50,7 @@ for k = 1:length(ROIs_label)
     end
 
 
-    % = The 2 steps below are based on the GUI steps = %
-    % ("Specify 2nd-level" & "Estimate")
-    
-    % Specify 2nd-level model
+    % GUI Step 1: Specify 2nd-level model
     nrun = 1; % enter the number of runs here
     if strcmp(which_model, 'flexible')
         jobfile = {'SPM_specify_model_job.m'};
@@ -58,7 +64,7 @@ for k = 1:length(ROIs_label)
     spm('defaults', 'EEG');
     spm_jobman('run', jobs, inputs{:});
     
-    % Estimate model
+    % GUI Step 2: Estimate model
     nrun = 1; % enter the number of runs here
     jobfile = {'SPM_estimate_model_job.m'};
     jobs = repmat(jobfile, 1, nrun);
@@ -80,6 +86,13 @@ for k = 1:length(ROIs_label)
     end
 end
     
+
+%%% How to proceed %%%
+cd results_dir;
+spm eeg
+% Now, click "Results" button in the GUI.
+% Alternatively, load the model estimation into xjview & do stats there
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%                       Sub-functions                             %%%%%

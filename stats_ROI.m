@@ -30,7 +30,12 @@ common();
 
 % SELECT which set of single-subject ERFs to use
 run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
-ResultsFolder_ROI_thisrun = [ResultsFolder_ROI run_name '\\'];
+
+% SELECT which beamformer results to use (fixed or free dipole orientation)
+%run_suffix = '';         % for fixed orientation
+run_suffix = '_freeori';  % for free orientation
+    
+ResultsFolder_ROI_thisrun = [ResultsFolder_ROI run_name run_suffix '\\'];
 
 
 %% Read data
@@ -115,9 +120,12 @@ if (exist(GA_output_file, 'file') ~= 2)
 end
 
 
-%% [WIP] Statistical analysis (ANOVA in SPM)
-%
+%% Statistical analysis (ANOVA in SPM)
+
 fprintf('\n= STATS: ANOVA in SPM =\n');
+
+SPM_temp_dir = [ResultsFolder_ROI_thisrun '\\SPM_temp\\'];
+mkdir(SPM_temp_dir);
 
 % each cycle processes one ROI
 for k = 1:length(ROIs_label)
@@ -130,12 +138,12 @@ for k = 1:length(ROIs_label)
     % Convert FT data to SPM format
     spm('defaults', 'eeg'); % make sure the path is correct
     
-    conds = fieldnames(data);
-    for j = 1:length(conds) % each cycle handles one cond
-        for i = 1:length(data.(conds{j})) % each cycle handles one subject
-            SPM_filename = [ResultsFolder_ROI_thisrun '\\SPM_temp\\' ROI_name '_' conds{j} '_subj' num2str(i)];
+    conds_names = fieldnames(data);
+    for j = 1:length(conds_names) % each cycle handles one cond
+        for i = 1:length(data.(conds_names{j})) % each cycle handles one subject
+            SPM_filename = [SPM_temp_dir ROI_name '_' conds_names{j} '_subj' num2str(i)];
             
-            spm_eeg_ft2spm(data.(conds{j}){i}, SPM_filename);
+            spm_eeg_ft2spm(data.(conds_names{j}){i}, SPM_filename);
 
             % change the type (or else it will throw an error)
             D = spm_eeg_load(SPM_filename);
@@ -152,6 +160,7 @@ for k = 1:length(ROIs_label)
     end
 end
 
+%%% How to proceed %%%
 % Now all the images have been saved in "SPM_Temp" (in all the "..._evoked" folders).
 % You can now open SPM gui, and build your 3x3 model.
 % Altenatively: to use the saved batch scripts, run "SPM_batch.m".

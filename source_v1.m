@@ -32,8 +32,13 @@ function source_v1
     % run the ROI analysis?
     RUN_ROI_ANALYSIS = true;
     
+    % use fixed or free dipole orientation in the beamformer?
+    FIXED_ORI = 'no'; % 'yes' == fixed, 'no' = free
+    
     % use which method ('svd' or 'centroid') for collapsing 
     % all vertices in an ROI into a single virtual sensor?
+    % Note: if you set FIXED_ORI = 'no' above, a diff VE methods has to be
+    % used (i.e. this var will not be looked at)
     VE_METHOD = 'svd';
     
     % which version of MEMES to use?
@@ -43,19 +48,26 @@ function source_v1
     
     % which preprocessing/ERF results to use?
     run_name = 'TSPCA10000_3';
+    if strcmp(FIXED_ORI, 'yes')
+        run_suffix = '';
+    else % free dipole orientation
+        run_suffix = '_freeori';    
+    end
     ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all subjects
-    ResultsFolder_ROI_thisrun = [ResultsFolder_ROI run_name '\\']; % ERF results for all subjects
-    ResultsFolder_Source_thisrun = [ResultsFolder_Source run_name '\\']; % ERF results for all subjects
+    ResultsFolder_ROI_thisrun = [ResultsFolder_ROI run_name run_suffix '\\']; % ERF results for all subjects
+    ResultsFolder_Source_thisrun = [ResultsFolder_Source run_name run_suffix '\\']; % ERF results for all subjects
 
     
-    % = Save files =
+    % = File names for saving =
     
     % filename for saving the beamformer output (to avoid running the whole thing every time)
-    %Beamformer_output_filename = 'beamformer_Chinese.mat'; % In this version: cfg.lcmv.lamda = '5%'; 
-    Beamformer_output_filename = 'beamformer_Chinese_lambda=1.mat'; 
-    %Beamformer_output_filename = 'beamformer_fixedori=no.mat'; 
-    
-    % To save a different version of beamformer results (e.g. when using 
+    if strcmp(FIXED_ORI, 'yes') % fixed dipole orientation
+        %Beamformer_output_filename = 'beamformer_Chinese.mat'; % This is an old version, where cfg.lcmv.lamda = '5%'; 
+        Beamformer_output_filename = 'beamformer_Chinese_lambda=1.mat'; 
+    else % free dipole orientation
+        Beamformer_output_filename = 'beamformer_freeori.mat'; 
+    end
+    % Note: To save a different version of beamformer results (e.g. when using 
     % a new set of ERF outputs), simply change this filename.
     % Similarly, to load a previous version of beamformer results,
     % change this filename accordingly.
@@ -63,14 +75,21 @@ function source_v1
     % filename for saving the ROI activity (stored in ResultsFolder_ROI for all subjects)
     ROI_output_filename = '_ROI.mat';
     
+    
+    %% check input & settings are valid
+    if ~(strcmp(FIXED_ORI, 'yes') || strcmp(FIXED_ORI, 'no'))
+        fprintf('Error in source_v1: Invalid setting for FIXED_ORI\n');
+    end
+    
 
+    %% start
+    
     %SubjectFolders = listFolders(DataFolder);
     SubjectFolders = [dir([DataFolder 'A*']); dir([DataFolder 'B*'])];
     SubjectFolders = {SubjectFolders.name}; % extract the names into a cell array
-
     
-    %% each cycle processes one subject
-    for h = 1:length(SubjectFolders)  %TODO: need to redo [6 12 17 19] using newest version of MEMES3, to fix the head-tilting-forward problem!!
+    % each cycle processes one subject
+    for h = 1:length(SubjectFolders)
 
         SubjectID = SubjectFolders{h};
         SubjectFolder = [DataFolder, '\\', SubjectID];
@@ -368,7 +387,7 @@ function source_v1
             cfg.headmodel       = headmodel; % individual headmodel (from coreg)
             %cfg.lcmv.lamda      = '5%';
             cfg.lcmv.lamda      = '100%'; % regularisation parameter - set to 1 here coz our data is rank-reduced (due to rejecting ICA comps)
-            cfg.lcmv.fixedori   = 'yes'; % ensures the orientation for all dipoles are aligned
+            cfg.lcmv.fixedori   = FIXED_ORI; % use the setting specified at the top
             cfg.lcmv.keepfilter = 'yes';
             cfg.lcmv.projectmom = 'no';
             cfg.lcmv.normalize  = 'yes'; %corrects for depth bias?
@@ -559,16 +578,21 @@ function source_v1
                         % add vertices from the current parcel to the overall list
                         vertices_all = [vertices_all; vertices];
                     end
-                    % for each vertex, get the spatial filter (i.e. set of weights) for it
-                    vertices_filters_cue = cat(1, source_cue_combined.avg.filter{vertices_all}); 
-                    %vertices_filters_target = cat(1, source_target_combined.avg.filter{vertices_all});
+                    % get the spatial filter (i.e. set of weights) for each vertex
+                    if strcmp(FIXED_ORI, 'yes') % for fixed orientation, there is 1 set of weights for each vertex
+                        vertices_filters_cue = cat(1, source_cue_combined.avg.filter{vertices_all}); 
+                    else % for free orientation, there are 3 sets of weights (1 on each axis) for each vertex
+                        vertices_filters_cue = cat(3, source_cue_combined.avg.filter{vertices_all}); 
+                    end
 
-
-                    % create virtual sensor for this ROI in cue window
-                    if (strcmp(VE_METHOD, 'centroid'))
-                        VE = create_virtual_sensor_Centroid(ROI_name, vertices_all, vertices_filters_cue, erf_cue_combined, erf, [1:length(eventnames_real)], headmodel, sourcemodel);
+                    % create virtual sensor for this ROI, using the appropriate fn 
+                    % according to what settings we selected at the top
+                    if strcmp(FIXED_ORI, 'no') % free dipole orientation
+                        VE = create_virtual_sensor_freeori(ROI_name, vertices_filters_cue, erf_cue_combined, erf, 1:length(eventnames_real)); 
+                    elseif strcmp(VE_METHOD, 'centroid')
+                        VE = create_virtual_sensor_Centroid(ROI_name, vertices_all, vertices_filters_cue, erf_cue_combined, erf, 1:length(eventnames_real), headmodel, sourcemodel);
                     else
-                        VE = create_virtual_sensor_SVD(ROI_name, vertices_filters_cue, erf_cue_combined, erf, [1:length(eventnames_real)]); 
+                        VE = create_virtual_sensor_SVD(ROI_name, vertices_filters_cue, erf_cue_combined, erf, 1:length(eventnames_real)); 
                     end
 
                     if ~isempty(VE) % successful
@@ -854,7 +878,7 @@ function source_v1
         if ~isempty(vertices_filters)
             for i = conds
                 % put it into a timelock structure for later calling ft_timelockstatistics (in stats_ROI.m)
-                VE.(eventnames_real{i}).time = erf_combined.time;
+                VE.(eventnames_real{i}).time = erf.(eventnames_real{i}).time;
                 VE.(eventnames_real{i}).label = {ROI_name};
                 VE.(eventnames_real{i}).dimord = 'chan_time';
 
@@ -901,7 +925,7 @@ function source_v1
             %VE.label = {ROI_name};
             for i = conds
                 % put it into a timelock structure for later calling ft_timelockstatistics (in stats_ROI.m)
-                VE.(eventnames_real{i}).time = erf_combined.time;
+                VE.(eventnames_real{i}).time = erf.(eventnames_real{i}).time;
                 VE.(eventnames_real{i}).avg(1,:) = filter(1,:) * erf.(eventnames_real{i}).avg(:,:); % estimated source activity = filter * erf (i.e. s = w * X)
                 VE.(eventnames_real{i}).label = {ROI_name};
                 VE.(eventnames_real{i}).dimord = 'chan_time';
@@ -948,6 +972,55 @@ function source_v1
             save([fname,'_',ROIs_label{k},'_avg_VE_beta'],[ROIs_label{k},'_avg_VE_beta'])
             %}
         end
+    end    
+
+    % create a virtual sensor for the given ROI
+    % use this function if you chose cfg.fixedori='no' in ft_sourceanalysis
+    % https://mne.tools/stable/auto_tutorials/source-modeling/plot_dipole_orientations.html
+    %
+    % step (1): compute the reconstructed source activity for each vertex 
+    % along all 3 dipole directions (i.e. obtaining 3 timecourses for this vertex)
+    % step (2): do a vector combination at every time sample, in order to 
+    % combine into 1 timecourse (only keep the vector magnitude, discard the orientation)
+    % step (3): collapse all vertices into one VE by taking a plain average
+    % over all vertices (the magnitude of activity is positive at all vertices)
+    %
+    % @param vertices_filters: 3 x channel x vertex (i.e. for each vertex
+    %                          in this ROI, 3 sets of weights are provided)
+    % @param erf_combined:     average erf across all 4 conditions
+    % @param erf:              separate erf for each condition
+    %
+    function VE = create_virtual_sensor_freeori(ROI_name, vertices_filters, erf_combined, erf, conds)
+        VE = [];
+                
+        % each cycle handles one cond
+        for i = conds
+            all_vertices_timecourses = [];
+            
+            % each cycle handles one vertex
+            for v = 1:size(vertices_filters, 3)
+                % grab the 3 sets of weights for this vertex
+                F = vertices_filters(:,:,v);
+            
+                % compute source timecourse in all 3 dipole orientations
+                timecourses_xyz = F * erf.(eventnames_real{i}).avg(:,:); % estimated source activity = filter * erf (i.e. s = w * X)
+                timecourse_combined = vecnorm(timecourses_xyz); % vector combination at every time sample, 
+                                                             % to obtain the length of the vector (i.e. absolute magnitude 
+                                                             % of brain activity, regardless of orientation)
+                % add the timecourse for this vertex to the list
+                all_vertices_timecourses = [all_vertices_timecourses; timecourse_combined];
+            end
+            
+            % take a plain average over all vertices
+            % can also try PCA
+            VE_timecourse = mean(all_vertices_timecourses);
+
+            % put it into a timelock structure for later calling ft_timelockstatistics (in stats_ROI.m)
+            VE.(eventnames_real{i}).time = erf.(eventnames_real{i}).time;
+            VE.(eventnames_real{i}).avg = VE_timecourse;
+            VE.(eventnames_real{i}).label = {ROI_name};
+            VE.(eventnames_real{i}).dimord = 'chan_time';
+        end        
     end    
 
 end % main function end

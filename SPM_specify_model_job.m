@@ -4,8 +4,8 @@
 % cfg_basicio BasicIO - Unknown
 %-----------------------------------------------------------------------
 
-% Select output folder (output files will be saved here)
-results_dir = 'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3\SPM_results\';
+% Select folder - this should match the output folder selected in SPM_batch.m
+results_dir = 'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3_freeori\SPM_results\';
 
 matlabbatch{1}.spm.stats.factorial_design.dir = {results_dir};
 
