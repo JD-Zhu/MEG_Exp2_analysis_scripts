@@ -3,6 +3,11 @@
 % spm SPM - SPM12 (7487)
 % cfg_basicio BasicIO - Unknown
 %-----------------------------------------------------------------------
-matlabbatch{1}.spm.stats.fmri_est.spmmat = {'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3_freeori\SPM_results\SPM.mat'};
+
+% load the results_dir variable - to ensure the path we use in this script 
+% matches the output folder specified in SPM_batch.m
+load results_dir
+
+matlabbatch{1}.spm.stats.fmri_est.spmmat = {[results_dir 'SPM.mat']};
 matlabbatch{1}.spm.stats.fmri_est.write_residuals = 0;
 matlabbatch{1}.spm.stats.fmri_est.method.Classical = 1;

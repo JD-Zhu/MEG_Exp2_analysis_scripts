@@ -13,10 +13,12 @@ image_dir = 'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3_freeori\SPM_temp\'
 % Select OUTPUT folder (output files will be saved here)
 results_dir = 'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3_freeori\SPM_results\';
 mkdir(results_dir);
-% REMEMBER to update the "results_dir" path in SPM_specify_model_job.m & 
-% SPM_estimate_model_job.m. This path should be the same in all 3 scripts!!
 
 %=========================================================================%
+
+% save the results_dir variable to file, so that SPM_specify_model_job.m & 
+% SPM_estimate_model_job.m can simply read in this var, to ensure consistency
+save results_dir results_dir;
 
 load('ROIs_label.mat');
 
@@ -49,7 +51,7 @@ for k = 1:length(ROIs_label)
         save([results_dir 'conds.mat'], 'cond_1_1', 'cond_1_2', 'cond_1_3', 'cond_2_1', 'cond_2_2', 'cond_2_3', 'cond_3_1', 'cond_3_2', 'cond_3_3');
     end
 
-
+    
     % GUI Step 1: Specify 2nd-level model
     nrun = 1; % enter the number of runs here
     if strcmp(which_model, 'flexible')
@@ -74,7 +76,37 @@ for k = 1:length(ROIs_label)
     spm('defaults', 'EEG');
     spm_jobman('run', jobs, inputs{:});
     
+    % GUI Step 3: Results 
+    % 3.1 Contrast Manager - enter contrast matrices
+    %{
+    % Note: this method (replacing .xCon field) doesn't work, 
+    % coz SPM also needs to generate nii files in this step.
+    % Simply replacing the field, you won't have the nii files & can't proceed to next step
+    load([results_dir 'SPM.mat']); % this file was generated in Step 2 above
+    load SPM_contrast_matrices_3x3.mat % we created this in advance, read it in now
+    SPM.xCon = SPM_contrast_matrices_3x3; % update the field containing the contrast matrices
+    save([results_dir 'SPM.mat'], 'SPM'); % overwrite previous version
+    %}
+    nrun = 1; % enter the number of runs here
+    jobfile = {'E:\Judy\Exp2\7_MEG-analysis\scripts\SPM_contrast_manager_job.m'};
+    jobs = repmat(jobfile, 1, nrun);
+    inputs = cell(0, nrun);
+    for crun = 1:nrun
+    end
+    spm('defaults', 'EEG');
+    spm_jobman('run', jobs, inputs{:});
     
+    % 3.2 Results Report - view the stats results & save
+    nrun = 1; % enter the number of runs here
+    jobfile = {'E:\Judy\Exp2\7_MEG-analysis\scripts\SPM_results_report_job.m'};
+    jobs = repmat(jobfile, 1, nrun);
+    inputs = cell(0, nrun);
+    for crun = 1:nrun
+    end
+    spm('defaults', 'EEG');
+    spm_jobman('run', jobs, inputs{:});
+
+
     % move all model results for this ROI into a separate folder
     files = dir(results_dir);  %get all files/folders
     isfile= ~[files.isdir]; %determine index of files vs folders
@@ -86,12 +118,9 @@ for k = 1:length(ROIs_label)
     end
 end
     
+% delete the temp file we created earlier
+delete results_dir.mat
 
-%%% How to proceed %%%
-cd results_dir;
-spm eeg
-% Now, click "Results" button in the GUI.
-% Alternatively, load the model estimation into xjview & do stats there
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
