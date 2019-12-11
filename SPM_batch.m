@@ -20,12 +20,18 @@ mkdir(results_dir);
 % SPM_estimate_model_job.m can simply read in this var, to ensure consistency
 save results_dir results_dir;
 
+% get ahold of the current working dir, coz when moving files later on, the working dir will change
+scripts_folder = pwd;
+
 load('ROIs_label.mat');
 
 % Each cycle processes one ROI
 for k = 1:length(ROIs_label)
     ROI_name = ROIs_label{k};
     
+    % go back to the scripts folder, so that all scripts can be correctly found
+    cd(scripts_folder);
+
     % Generate list of images (required input for "Specify 2nd-level")
     if strcmp(which_model, 'flexible')
         % generate images for all subjects in all conds (for this ROI)
@@ -88,7 +94,7 @@ for k = 1:length(ROIs_label)
     save([results_dir 'SPM.mat'], 'SPM'); % overwrite previous version
     %}
     nrun = 1; % enter the number of runs here
-    jobfile = {'E:\Judy\Exp2\7_MEG-analysis\scripts\SPM_contrast_manager_job.m'};
+    jobfile = {'SPM_contrast_manager_job.m'};
     jobs = repmat(jobfile, 1, nrun);
     inputs = cell(0, nrun);
     for crun = 1:nrun
@@ -98,7 +104,7 @@ for k = 1:length(ROIs_label)
     
     % 3.2 Results Report - view the stats results & save
     nrun = 1; % enter the number of runs here
-    jobfile = {'E:\Judy\Exp2\7_MEG-analysis\scripts\SPM_results_report_job.m'};
+    jobfile = {'SPM_results_report_job.m'};
     jobs = repmat(jobfile, 1, nrun);
     inputs = cell(0, nrun);
     for crun = 1:nrun

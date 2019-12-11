@@ -61,12 +61,12 @@ matlabbatch{1}.spm.stats.factorial_design.des.fblock.fsuball.specall.imatrix = d
     3 3];
     %}
 
-    
+% Specify which effects to include in the model    
+matlabbatch{1}.spm.stats.factorial_design.des.fblock.maininters{1}.fmain.fnum = 1;    % Main effect of Subject (we should model the subject effects here, but no need to test for it later on, i.e. don't enter a contrast matrix for this. Just consider it as nuisance factor)
+matlabbatch{1}.spm.stats.factorial_design.des.fblock.maininters{2}.inter.fnums = [2
+                                                                                  3]; % Interaction of Context * Ttype (this will allow you to test the 2 main effects too)
+                                                                              
 % Other things for the model (default settings)                                                               
-matlabbatch{1}.spm.stats.factorial_design.des.fblock.maininters{1}.fmain.fnum = 2;
-matlabbatch{1}.spm.stats.factorial_design.des.fblock.maininters{2}.fmain.fnum = 3;
-matlabbatch{1}.spm.stats.factorial_design.des.fblock.maininters{3}.inter.fnums = [2
-                                                                                  3];
 matlabbatch{1}.spm.stats.factorial_design.cov = struct('c', {}, 'cname', {}, 'iCFI', {}, 'iCC', {});
 matlabbatch{1}.spm.stats.factorial_design.multi_cov = struct('files', {}, 'iCFI', {}, 'iCC', {});
 matlabbatch{1}.spm.stats.factorial_design.masking.tm.tm_none = 1;
