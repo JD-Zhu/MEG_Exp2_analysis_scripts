@@ -79,7 +79,7 @@ function [] = common()
 
     % time-course plots
     global PLOT_XLIM; global ERF_BASELINE; global ROI_BASELINE;
-    PLOT_XLIM    = [-0.8 1];
+    PLOT_XLIM    = [-0.2 0.8];
     ERF_BASELINE = [-0.2 0];
     ROI_BASELINE = [-0.2 0];
     

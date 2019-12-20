@@ -4,14 +4,22 @@
 % Author: Judy Zhu (github.com/JD-Zhu)
 %
 %=========================================================================%
-% Which model? (Full factorial / Flexible factorial)
-which_model = 'flexible'; % 'full';
+% Which contrasts? ('3x3', '3x2', '2x2', 'nat+art_vs_bi', 'nat_vs_art+bi')
+%   3x3: full model, includes everything
+%   3x2: need to test once for switch effect & once for mixing effect, i.e. 2 sets
+%   2x2: 4 sets <not implemented, coz we don't have strong theoretical basis for doing this>
+%   'nat+art_vs_bi': univalent vs bivalent (use weightings in contrast matrix to combine nat-uni & art-uni) 
+%   'nat_vs_art+bi': free vs forces lang selection (use weightings to combine art-uni & bi)
+which_contrasts = 'bi_only';
+
+% Which model: full-factorial or flexible-factorial? ('full', 'flexible')
+which_model = 'flexible';
 
 % Select INPUT folder (where to read in the images)
-image_dir = 'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3_freeori\SPM_temp\';
+image_dir = 'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3_freeori\SPM_images\';
 
 % Select OUTPUT folder (output files will be saved here)
-results_dir = 'E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3_freeori\SPM_results\';
+results_dir = ['E:\Judy\Exp2\6_MEG-data\Results_ROI\TSPCA10000_3_freeori\SPM_results--' which_contrasts '\'];
 mkdir(results_dir);
 
 %=========================================================================%
@@ -19,6 +27,10 @@ mkdir(results_dir);
 % save the results_dir variable to file, so that SPM_specify_model_job.m & 
 % SPM_estimate_model_job.m can simply read in this var, to ensure consistency
 save results_dir results_dir;
+% save the which_contrasts settings to file, so that SPM_contrast_manager_job.m 
+% can simply read in this var, to ensure consistency
+save which_contrasts which_contrasts;
+
 
 % get ahold of the current working dir, coz when moving files later on, the working dir will change
 scripts_folder = pwd;
@@ -124,8 +136,10 @@ for k = 1:length(ROIs_label)
     end
 end
     
-% delete the temp file we created earlier
-%delete results_dir.mat
+% delete the temp files we created earlier
+cd(scripts_folder);
+delete results_dir.mat
+delete which_contrasts.mat
 
 
 

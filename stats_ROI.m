@@ -120,11 +120,12 @@ if (exist(GA_output_file, 'file') ~= 2)
 end
 
 
-%% Statistical analysis (ANOVA in SPM)
-
+%% Statistical analysis: prep for running ANOVA in SPM12
+% Only need to run this section once & save the images
+%{
 fprintf('\n= STATS: ANOVA in SPM =\n');
 
-SPM_temp_dir = [ResultsFolder_ROI_thisrun '\\SPM_temp\\'];
+SPM_temp_dir = [ResultsFolder_ROI_thisrun '\\SPM_images\\'];
 mkdir(SPM_temp_dir);
 
 % each cycle processes one ROI
@@ -153,8 +154,8 @@ for k = 1:length(ROIs_label)
             % Then convert to images using spm_eeg_convert2images
             S.D = [SPM_filename '_evoked.mat'];
             S.mode = 'time';
-            %S.conditions = ; (default == all) % you can put multiple conditions in the same SPM object
-            %S.timewin   (default == [-Inf Inf]) % we'll keep the whole time window, i.e. -200 ~ 750
+            %S.conditions = ; % default == all  % you can put multiple conditions in the same SPM object
+            S.timewin = [-0.1 0.75]; % default == [-Inf Inf]  % we'll keep the whole time window, i.e. -100 ~ 750
             [images, outroot] = spm_eeg_convert2images(S);
         end
     end
@@ -165,10 +166,13 @@ end
 % You can now open SPM gui, and build your 3x3 model.
 % Altenatively: to use the saved batch scripts, run "SPM_batch.m".
 
+%}
 
 %% Statistical analysis (to identify time interval of each effect, i.e. temporal clusters)
 
 fprintf('\n= STATS: CLUSTER-BASED PERMUTATION TESTS =\n');
+
+ft_defaults % reset paths (just in case we ran SPM12 before & ruined the paths)
 
 % each cycle processes one ROI
 for k = 1:length(ROIs_label)
@@ -307,8 +311,8 @@ for k = 1:length(ROIs_label)
 %}
 end
 
-%save([ResultsFolder_ROI_thisrun 'stats.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi', 'SwCost_art_vs_bi', 'MixCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_art');
-%save([ResultsFolder_ROI_thisrun 'stats_pairwise.mat'], 'stats_pairwise');
+save([ResultsFolder_ROI_thisrun 'stats.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi', 'SwCost_art_vs_bi', 'MixCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_art');
+save([ResultsFolder_ROI_thisrun 'stats_pairwise.mat'], 'stats_pairwise');
 
 
 %% Find the effects & plot them
@@ -324,16 +328,21 @@ mkdir([ResultsFolder_ROI_thisrun 'Figures\\non-sig\\']);
 
 ROIs_names = fieldnames(GA); % get the list of ROI names
 
-% baseline correction b4 plotting
-% Note: This is the right place to do baseline correction. We decided not to do it
+% Baseline correction b4 plotting. Notes: 
+% 1. This is the right place to do baseline correction. We decided not to do it
 % b4 running stats (i.e. at single-subject level) - see my email for expla
-cfg = [];
-cfg.feedback = 'no';
-cfg.baseline = ROI_BASELINE; %[-0.1 0];
-for k = 1:length(ROIs_names) % each cycle handles one ROI
-    ROI_name = ROIs_names{k};
-    for j = 1:length(eventnames_real)
-        GA.(ROI_name).(eventnames_real{j}) = ft_timelockbaseline(cfg, GA.(ROI_name).(eventnames_real{j})); 
+% 2. Only do baseline correction if we used "fixed dipole orientation" in beamformer.
+% If we used "free dipole orientation" (i.e. entire timecourse is positive
+% values), then we don't do baseline correction
+if ~contains(ResultsFolder_ROI_thisrun, 'freeori')
+    cfg = [];
+    cfg.feedback = 'no';
+    cfg.baseline = ROI_BASELINE; %[-0.1 0];
+    for k = 1:length(ROIs_names) % each cycle handles one ROI
+        ROI_name = ROIs_names{k};
+        for j = 1:length(eventnames_real)
+            GA.(ROI_name).(eventnames_real{j}) = ft_timelockbaseline(cfg, GA.(ROI_name).(eventnames_real{j})); 
+        end
     end
 end
 
@@ -364,17 +373,29 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
             type_of_cost = stat_name(1:2); % 'Sw' or 'Mix'
             type_of_contrast = stat_name(end-9:end); % 'nat_vs_art' or 'nat_vs_bi'
             if strcmp(type_of_cost, 'Sw') % SwCost
+                % if we only want to plot the 2 contexts that showed sig interaction:
                 if strcmp(type_of_contrast, 'nat_vs_art')
                     conds_to_plot = [1 2 4 5];
                 elseif strcmp(type_of_contrast, '_nat_vs_bi')
                     conds_to_plot = [1 2 7 8];
+                else % 'art_vs_bi'
+                    conds_to_plot = [4 5 7 8];
                 end
+                
+                % if we want to plot all 3 contexts in same graph:
+                conds_to_plot = [1 2 4 5 7 8];
             elseif strcmp(type_of_cost, 'Mi') % MixCost
+                % if we only want to plot the 2 contexts that showed sig interaction:
                 if strcmp(type_of_contrast, 'nat_vs_art')
                     conds_to_plot = [1 3 4 6];
                 elseif strcmp(type_of_contrast, '_nat_vs_bi')
                     conds_to_plot = [1 3 7 9];
-                end                
+                else % 'art_vs_bi'
+                    conds_to_plot = [4 6 7 9];
+                end 
+                
+                % if we want to plot all 3 contexts in same graph:
+                conds_to_plot = [1 3 4 6 7 9];                
             end
             eventnames_subset = eventnames_real(conds_to_plot); 
             colours_subset = colours(conds_to_plot);
@@ -406,7 +427,7 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
             % each shaded patch as an item too). For some reason,
             % the order of the lines are reversed when you grab them
             lines = findall(gcf, 'Type','line');
-            legend([lines(4) lines(3) lines(2) lines(1)], ...
+            legend(flip(lines(1:end)), ... % flip the order back to normal
               eventnames_subset, 'Location','northwest', 'FontSize',30);
             set(lines, 'Linewidth',3); % line thickness
                 
