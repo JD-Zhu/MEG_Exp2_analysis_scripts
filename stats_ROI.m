@@ -29,11 +29,12 @@ common();
 
 
 % SELECT which set of single-subject ERFs to use
-run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
+run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ROI" folder
 
 % SELECT which beamformer results to use (fixed or free dipole orientation)
 %run_suffix = '';         % for fixed orientation
-run_suffix = '_freeori';  % for free orientation
+%run_suffix = '_freeori';  % for free orientation
+run_suffix = '_freeori_smooth';  % for free orientation, with smoothing applied on all single-subject ROI timecourses
     
 ResultsFolder_ROI_thisrun = [ResultsFolder_ROI run_name run_suffix '\\'];
 
@@ -363,8 +364,8 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
         effect = find(stats.(stat_name).(ROI_name).mask); 
 
         % do a GA plot for all contrasts that have an effect (will add gray box to show effect interval later)
-        % also do a GA plot for all ROIs that don't have an effect (save in 'non-sig' folder); we don't need to plot the 3 contrasts for each ROI ('lang', 'ttype' & 'interaction') - they are the same, just plot one
-        if ( ~isempty(effect)) % || strcmp(stat_name(end-3:end), 'tion') ) % can't compare the whole word 'interaction' here, coz some stat_names (e.g. 'cue_lang') are a shorter string
+        % also do a GA plot for all ROIs that don't have an effect (save in 'non-sig' folder); we don't need to plot all 3 contrasts for each ROI ('nat_vs_art', 'nat_vs_bi', 'art_vs_bi') - they are the same, just plot one
+        if ( ~isempty(effect) || strcmp(stat_name(end-8:end), 'nat_vs_bi') ) % can't compare the whole word 'interaction' here, coz some stat_names (e.g. 'cue_lang') are a shorter string
             % GA plot
             figure('Name', [stat_name ' in ' ROI_name], 'Position', get(0, 'Screensize')); % make the figure full-screen size
             hold on;
@@ -455,7 +456,7 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
                 % maximise the figure before saving
                 %set(gcf, 'Position', get(0, 'Screensize'));
 
-                filename = [ROI_name '_' stat_name(1:3) '.png'];
+                filename = [ROI_name '_' stat_name '.png'];
                 %saveas(gcf, [ResultsFolder_ROI_thisrun 'Figures\\non-sig\\' filename]); % this fn does not maintain the aspect ratio, font size, etc
                 export_fig(gcf, [ResultsFolder_ROI_thisrun 'Figures\\non-sig\\' filename]); % use this tool to save the figure exactly as shown on screen
 
