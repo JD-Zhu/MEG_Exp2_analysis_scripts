@@ -34,7 +34,7 @@ run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_RO
 % SELECT which beamformer results to use (fixed or free dipole orientation)
 %run_suffix = '';         % for fixed orientation
 %run_suffix = '_freeori';  % for free orientation
-run_suffix = '_freeori_smooth';  % for free orientation, with smoothing applied on all single-subject ROI timecourses
+run_suffix = '_freeori_median-3';  % for free orientation, with smoothing applied on all single-subject ROI timecourses
     
 ResultsFolder_ROI_thisrun = [ResultsFolder_ROI run_name run_suffix '\\'];
 
