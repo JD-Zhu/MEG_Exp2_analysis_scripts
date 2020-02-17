@@ -5,11 +5,17 @@
 % Then, run the following code to extract a single value for each 
 % subject in each condition (avg over time)
 
-% Based on the finding:
-% Bi_sw in LIFG, p = 0.0770, between 425~450 ms
+% Based on the finding - choose one of these:
+% (1) Bi_sw in LIFG, p = 0.077, between 425~450 ms
 ROI_name = 'LIFG';
 start_sample = 246; % check the .time field in "data", to find the sample indices corresponding to the time interval above
 end_sample = 251;
+
+% (2) Bi_sw in RIFG, p = 0.004, between 210~260 ms
+ROI_name = 'RIFG';
+start_sample = 203; % check the .time field in "data", to find the sample indices corresponding to the time interval above
+end_sample = 213;
+
 
 data = allSubjects_ROIs.(ROI_name); % data for the current ROI
 T = table(); % create an empty table (to store the output)
@@ -27,5 +33,7 @@ for j = 1:length(cond_names) % each cycle handles one cond (e.g. NatStay)
 end
 
 % save to csv file
-output_file = [ResultsFolder_ROI_thisrun 'avgovertime\\' ROI_name '_' start_sample '-' end_sample 'ms.csv'];
+start_time = data.NatStay{1,1}.time(start_sample) * 1000;
+end_time   = data.NatStay{1,1}.time(end_sample) * 1000;
+output_file = [ResultsFolder_ROI_thisrun 'avgovertime\\' ROI_name '_' int2str(start_time) '-' int2str(end_time) 'ms.csv'];
 writetable(T, output_file);
