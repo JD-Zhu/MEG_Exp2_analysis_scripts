@@ -20,7 +20,8 @@ CHANNEL_REPAIR = false; % only need to do the repair once, we'll save repaired e
 repaired_erf_folder = 'channelrepaired\\'; % need to create this folder first
 
 % cfg.avgovertime setting in cluster-based permutation test
-AVGOVERTIME = false;
+AVGOVERTIME = true;
+TIME_WINDOW_TO_AVG = [0.060 0.110]; % must set this var, if AVGOVERTIME is set to true
 
 
 % SELECT which set of single-subject ERFs to use
@@ -146,7 +147,7 @@ for j = 1:length(eventnames_real)
 end
 
 % plot GFP
-figure('Name','GFP (all subjects)'); hold on
+figure('Name','GFP_all_subjects'); hold on
 for j = 1:length(eventnames_real)
     if colours_and_lineTypes % use a combination of colours and line types to distinguish conds
         plot(GA_erf_GFP.(eventnames_real{j}).time, GA_erf_GFP.(eventnames_real{j}).avg, 'color', colours{j}, 'LineStyle', lineTypes{j});
@@ -159,19 +160,14 @@ legend(eventnames_real);
 
 
 % average across all 4 conds (for selecting windows for peaks)
-%{
-averageAcrossConds_cue = GA_erf_GFP.cuechstay;
-averageAcrossConds_cue.avg = (GA_erf_GFP.cuechstay.avg + GA_erf_GFP.cuechswitch.avg + GA_erf_GFP.cueenstay.avg + GA_erf_GFP.cueenswitch.avg) / 4;
-averageAcrossConds_target = GA_erf_GFP.targetchstay;
-averageAcrossConds_target.avg = (GA_erf_GFP.targetchstay.avg + GA_erf_GFP.targetchswitch.avg + GA_erf_GFP.targetenstay.avg + GA_erf_GFP.targetenswitch.avg) / 4;
+averageAcrossConds = GA_erf_GFP.NatStay;
+averageAcrossConds.avg = (GA_erf_GFP.NatStay.avg + GA_erf_GFP.NatSwitch.avg + GA_erf_GFP.NatSingle.avg ...
+                        + GA_erf_GFP.ArtStay.avg + GA_erf_GFP.ArtSwitch.avg + GA_erf_GFP.ArtSingle.avg ...
+                        + GA_erf_GFP.BiStay.avg + GA_erf_GFP.BiSwitch.avg + GA_erf_GFP.BiSingle.avg) / 9;
 
-figure('Name','Average across all conds - cue window'); 
-plot(averageAcrossConds_cue.time, averageAcrossConds_cue.avg); 
-xlim([-0.1 0.75]);
-figure('Name','Average across all conds - target window'); 
-plot(averageAcrossConds_target.time, averageAcrossConds_target.avg); 
-xlim([-0.1 0.75]);
-%}
+figure('Name','GFP_all_subjects - Averaged across all conds'); 
+plot(averageAcrossConds.time, averageAcrossConds.avg); 
+xlim([-0.2 0.8]);
 
 
 %% Statistical analysis
@@ -194,9 +190,7 @@ cfg.neighbours = neighbours;  % same as defined for the between-trials experimen
 % can choose diff time windows to analyse for cue epochs & target epochs
 % (these will be fed into cfg.latency accordingly)
 if (AVGOVERTIME)
-    latency_cue = [0.408 0.683];%[0.385 0.585];%[0.4 0.6];%[0.425 0.55]; % time window for cue-locked effect
-    latency_target = [0.2 0.3];%[0.22 0.32];%[0.25 0.3]; % time window for target-locked effect 
-                                % tried [0.15 0.3], [0.2 0.25], [0.2 0.4]. Not sig.
+    latency_cue = TIME_WINDOW_TO_AVG; % time range to average over
     cfg.avgovertime = 'yes'; % if yes, this will average over the entire time window chosen in cfg.latency 
                             % (useful when you want to look at a particular component, e.g. to look at M100,
                             % cfg.latency = [0.08 0.12]; cfg.avgovertime = 'yes'; )
