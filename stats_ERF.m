@@ -20,7 +20,7 @@ CHANNEL_REPAIR = false; % only need to do the repair once, we'll save repaired e
 repaired_erf_folder = 'channelrepaired\\'; % need to create this folder first
 
 % cfg.avgovertime setting in cluster-based permutation test
-AVGOVERTIME = true;
+AVGOVERTIME = false;
 TIME_WINDOW_TO_AVG = [0.060 0.110]; % must set this var, if AVGOVERTIME is set to true
 
 
@@ -202,7 +202,7 @@ end
 
 cfg.method = 'montecarlo';
 cfg.statistic = 'depsamplesT'; %cfg.statistic = 'ft_statfun_indepsamplesT'; OR 'ft_statfun_depsamplesFmultivariate';
-cfg.correctm = 'cluster'; %'no'; % its common in MEG studies to run uncorrected at cfg.alpha = 0.001
+cfg.correctm = 'cluster'; %'no'; % it is common in MEG studies to run uncorrected at cfg.alpha = 0.001
 cfg.clusteralpha = 0.05; % threshold for selecting candidate samples to form clusters
 cfg.clusterstatistic = 'maxsum';
 cfg.minnbchan = 2; % minimum number of neighbourhood channels required to be significant 
@@ -232,9 +232,19 @@ cfg.ivar  = 2; % row of design matrix that contains independent variable (i.e. t
 cfg.latency = latency_cue;
 
 
+%% 4 time windows to avg over
+%{
+% peak latencies: 90, 150, 245, 495
+cfg.latency = [0.060 0.110];
+cfg.latency = [0.130 0.175];
+cfg.latency = [0.200 0.280]; % bi sw$ (corresponding to the RdlPFC effect in ### version) can be found in [0.180 0.265] or [0.170 0.290];
+cfg.latency = [0.350 0.640]; % bi sw$ is found here (for cfg.minnbchan = 2)
+%}
+
 % Run the statistical tests
 [Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
 length(find(Bi_sw.mask))
+
 %%
 % Switch cost in each context
 [Nat_sw] = ft_timelockstatistics(cfg, data.NatStay{:}, data.NatSwitch{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
@@ -255,14 +265,15 @@ length(find(Bi_mix.mask))
 
 %save([ResultsFolder_thisrun 'stats_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Nat_sw', 'Art_sw', 'Bi_sw', 'Nat_mix', 'Art_mix', 'Bi_mix');
 
-% interaction in switch cost
+
+% sw$ interaction (nat-vs-bi)
 cfg.minnbchan = 2;
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.BiStay, data.BiSwitch);
 [interaction_sw] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
 
 length(find(interaction_sw.mask))
 
-% interaction in mixing cost
+% mix$ interaction (nat-vs-bi)
 cfg.minnbchan = 2;
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSingle, data.BiStay, data.BiSingle);
 [interaction_mix] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
@@ -354,7 +365,7 @@ effect_target_ttype = length(find(target_ttype.mask))
 
 load([ResultsFolder_thisrun 'stats.mat']);
 load('lay.mat');
-load([ResultsFolder_thisrun 'GA_erf_allConditions.mat']); % only required if using ft_topoplot
+load([ResultsFolder_thisrun 'GA_avg.mat']); % only required if using ft_topoplot
 
 % use a nice-looking colourmap
 ft_hastoolbox('brewermap', 1); % ensure this toolbox is on the path
@@ -378,7 +389,7 @@ cfg = [];
 %cfg.zlim = [-5 5]; % set scaling (range of t-values) (usually using automatic is ok) 
 cfg.highlightcolorpos = [1 1 1]; % white for pos clusters
 cfg.highlightcolorneg = [255/255 192/255 203/255]; % pink for neg clusters
-cfg.alpha = 0.1; % any clusters with a p-value below this threshold will be plotted
+cfg.alpha = 0.05; % any clusters with a p-value below this threshold will be plotted
 cfg.layout = lay;
 cfg.colormap = cmap;
 
