@@ -21,7 +21,7 @@ repaired_erf_folder = 'channelrepaired\\'; % need to create this folder first
 
 % cfg.avgovertime setting in cluster-based permutation test
 AVGOVERTIME = false;
-TIME_WINDOW_TO_AVG = [0.060 0.110]; % must set this var, if AVGOVERTIME is set to true
+%TIME_WINDOW_TO_AVG = [0.060 0.110]; % must set this var, if AVGOVERTIME is set to true
 
 
 % SELECT which set of single-subject ERFs to use
@@ -205,7 +205,7 @@ cfg.statistic = 'depsamplesT'; %cfg.statistic = 'ft_statfun_indepsamplesT'; OR '
 cfg.correctm = 'cluster'; %'no'; % it is common in MEG studies to run uncorrected at cfg.alpha = 0.001
 cfg.clusteralpha = 0.05; % threshold for selecting candidate samples to form clusters
 cfg.clusterstatistic = 'maxsum';
-cfg.minnbchan = 2; % minimum number of neighbourhood channels required to be significant 
+cfg.minnbchan = 3; % minimum number of neighbourhood channels required to be significant 
                    % in order to form a cluster 
                    % (default: 0, ie. each single channel can be considered a cluster).
                    % 4 or 5 is a good choice; 2 is too few coz it's even below
@@ -214,7 +214,7 @@ cfg.minnbchan = 2; % minimum number of neighbourhood channels required to be sig
 
 cfg.tail = 0;
 cfg.clustertail = 0; % 2 tailed test
-cfg.alpha = 0.1; %0.001  % threshold for cluster-level statistics (any cluster with a p-value lower than this will be reported as sig - an entry of '1' in .mask field)
+cfg.alpha = 0.05; %0.001  % threshold for cluster-level statistics (any cluster with a p-value lower than this will be reported as sig - an entry of '1' in .mask field)
 cfg.correcttail = 'prob'; % correct for 2-tailedness
 cfg.numrandomization = 500; % Rule of thumb: use 500, and double this number if it turns out 
     % that the p-value differs from the chosen alpha (e.g. 0.05) by less than 0.02
@@ -232,7 +232,7 @@ cfg.ivar  = 2; % row of design matrix that contains independent variable (i.e. t
 cfg.latency = latency_cue;
 
 
-%% 4 time windows to avg over
+% 4 time windows to avg over
 %{
 % peak latencies: 90, 150, 245, 495
 cfg.latency = [0.060 0.110];
@@ -241,11 +241,7 @@ cfg.latency = [0.200 0.280]; % bi sw$ (corresponding to the RdlPFC effect in ###
 cfg.latency = [0.350 0.640]; % bi sw$ is found here (for cfg.minnbchan = 2)
 %}
 
-% Run the statistical tests
-[Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
-length(find(Bi_sw.mask))
-
-%%
+%% SANITY CHECK (ie. planned pairwise comparisons within each context)
 % Switch cost in each context
 [Nat_sw] = ft_timelockstatistics(cfg, data.NatStay{:}, data.NatSwitch{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
 [Art_sw] = ft_timelockstatistics(cfg, data.ArtStay{:}, data.ArtSwitch{:});
@@ -256,29 +252,87 @@ length(find(Bi_sw.mask))
 [Art_mix] = ft_timelockstatistics(cfg, data.ArtSingle{:}, data.ArtStay{:});
 [Bi_mix] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
 
-length(find(Nat_sw.mask))
-length(find(Art_sw.mask))
-length(find(Bi_sw.mask))
-length(find(Nat_mix.mask))
-length(find(Art_mix.mask))
-length(find(Bi_mix.mask))
+length(find(Nat_sw.mask))  % not sig
+length(find(Art_sw.mask))  % sig!
+length(find(Bi_sw.mask))   % not sig
+length(find(Nat_mix.mask)) % sig!
+length(find(Art_mix.mask)) % sig (but did not survive Bonferroni)
+length(find(Bi_mix.mask))  % sig (but did not survive Bonferroni)
 
-%save([ResultsFolder_thisrun 'stats_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Nat_sw', 'Art_sw', 'Bi_sw', 'Nat_mix', 'Art_mix', 'Bi_mix');
+%save([ResultsFolder_thisrun 'stats_pairwise_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Nat_sw', 'Art_sw', 'Bi_sw', 'Nat_mix', 'Art_mix', 'Bi_mix');
 
-
-% sw$ interaction (nat-vs-bi)
-cfg.minnbchan = 2;
+%%
+% INTERACTIONS
+% sw$ interaction
+cfg.minnbchan = 3;
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.BiStay, data.BiSwitch);
-[interaction_sw] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
+[SwCost_nat_vs_bi] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
+[timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtStay, data.ArtSwitch, data.BiStay, data.BiSwitch);
+[SwCost_art_vs_bi] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
+[timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.ArtStay, data.ArtSwitch);
+[SwCost_nat_vs_art] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
 
-length(find(interaction_sw.mask))
+length(find(SwCost_nat_vs_bi.mask))  % not sig
+length(find(SwCost_art_vs_bi.mask))  % not sig
+length(find(SwCost_nat_vs_art.mask)) % not sig
 
 % mix$ interaction (nat-vs-bi)
-cfg.minnbchan = 2;
-[timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSingle, data.BiStay, data.BiSingle);
-[interaction_mix] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
+cfg.minnbchan = 3;
+[timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.BiSingle, data.BiStay);
+[MixCost_nat_vs_bi] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); 
+[timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtSingle, data.ArtStay, data.BiSingle, data.BiStay);
+[MixCost_art_vs_bi] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
+[timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.ArtSingle, data.ArtStay);
+[MixCost_nat_vs_art] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); 
 
-length(find(interaction_mix.mask))
+length(find(MixCost_nat_vs_bi.mask)) % sig (but did not survive Bonferroni)
+length(find(MixCost_art_vs_bi.mask)) % not sig
+length(find(MixCost_nat_vs_art.mask)) % not sig
+
+%save([ResultsFolder_thisrun 'stats_2x2interactions_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'SwCost_nat_vs_bi', 'SwCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_bi', 'MixCost_art_vs_bi', 'MixCost_nat_vs_art');
+
+%% MAIN EFFECTS
+% main effect of context (collapsed across stay-switch-single)
+fprintf('\nMain effect of context (3 comparisons):');
+timelock_Nat = data.NatStay;
+timelock_Art = data.ArtStay;
+timelock_Bi = data.BiStay;
+for i = 1:numSubjects
+    timelock_Nat{i}.avg = (data.NatStay{i}.avg + data.NatSwitch{i}.avg + data.NatSingle{i}.avg) / 3; % average across stay/switch/single
+    timelock_Art{i}.avg = (data.ArtStay{i}.avg + data.ArtSwitch{i}.avg + data.ArtSingle{i}.avg) / 3; % average across stay/switch/single
+    timelock_Bi{i}.avg = (data.BiStay{i}.avg + data.BiSwitch{i}.avg + data.BiSingle{i}.avg) / 3; % average across stay/switch/single
+end
+%cfg.latency = latency_cue; % time interval over which the experimental 
+fprintf('\n  -> Nat vs Bi');
+[Context_nat_vs_bi] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Bi{:});
+fprintf('\n  -> Art vs Bi');
+[Context_art_vs_bi] = ft_timelockstatistics(cfg, timelock_Art{:}, timelock_Bi{:});
+fprintf('\n  -> Nat vs Art');
+[Context_nat_vs_art] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Art{:});
+
+% main effect of ttype (collapsed across nat-art-bi)
+% We will test "switch effect" & "mixing effect" separately (no need to correct for 2 comparisons)
+timelock_Stay = data.NatStay;
+timelock_Switch = data.NatSwitch;
+timelock_Single = data.NatSingle;
+for i = 1:numSubjects
+    timelock_Stay{i}.avg = (data.NatStay{i}.avg + data.ArtStay{i}.avg + data.BiStay{i}.avg) / 3; % average across nat/art/bi
+    timelock_Switch{i}.avg = (data.NatSwitch{i}.avg + data.ArtSwitch{i}.avg + data.BiSwitch{i}.avg) / 3; 
+    timelock_Single{i}.avg = (data.NatSingle{i}.avg + data.ArtSingle{i}.avg + data.BiSingle{i}.avg) / 3;
+end
+%cfg.latency = latency_cue; % time interval over which the experimental 
+fprintf('\nMain effect of switch:\n');
+[Switch] = ft_timelockstatistics(cfg, timelock_Stay{:}, timelock_Switch{:});
+fprintf('\nMain effect of mix:\n');
+[Mix] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:});
+
+length(find(Context_nat_vs_bi.mask))  % sig (but did not survive Bonferroni)
+length(find(Context_art_vs_bi.mask))  % not sig
+length(find(Context_nat_vs_art.mask)) % not sig
+length(find(Switch.mask))             % not sig
+length(find(Mix.mask))                % sig (did not survive Bonferroni at minnbchan = 3; survived at minnbchan = 2)
+
+%save([ResultsFolder_thisrun 'stats_MainEffects_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Context_nat_vs_bi', 'Context_art_vs_bi', 'Context_nat_vs_art', 'Switch', 'Mix');
 
 
 %% Below are from MEG Exp 1

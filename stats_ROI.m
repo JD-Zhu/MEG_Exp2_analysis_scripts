@@ -230,6 +230,7 @@ for k = 1:length(ROIs_label)
     % Run the statistical tests
     
     % INTERACTION (i.e. calc sw$ in each context, then submit the 2 sw$ for comparison)
+    fprintf('\n= 2x2 interactions (i.e. 3 comparisons for sw$, 3 comparisons for mix$) =\n\n');
     fprintf('\nNat vs Bi');
     fprintf('\n  -> Testing valence x switch interaction:\n');
     [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.BiStay, data.BiSwitch);
@@ -259,17 +260,17 @@ for k = 1:length(ROIs_label)
     [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.ArtSingle, data.ArtStay); %'2-1 vs 4-3');
     %cfg.latency = latency_target; % time interval over which the experimental 
     [MixCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
+ 
     
     % SANITY CHECK - did we find a switch cost in Bivalent context?
-    % (we can use the same code below to unpack interactions)
+    % (here we also perform all the planned pairwise comparisons within each context)
+    fprintf('\n= Planned pairwise comparisons to assess sw$ & mix$ within each context\n');
     [stats_pairwise.Bi_sw.(ROI_name)] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
     [stats_pairwise.Bi_mix.(ROI_name)] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
-    %
     [stats_pairwise.Nat_sw.(ROI_name)] = ft_timelockstatistics(cfg, data.NatStay{:}, data.NatSwitch{:}); 
     [stats_pairwise.Nat_mix.(ROI_name)] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:}); 
     [stats_pairwise.Art_sw.(ROI_name)] = ft_timelockstatistics(cfg, data.ArtStay{:}, data.ArtSwitch{:}); 
     [stats_pairwise.Art_mix.(ROI_name)] = ft_timelockstatistics(cfg, data.ArtSingle{:}, data.ArtStay{:}); 
-    %
     
     contrasts = fieldnames(stats_pairwise);
 
@@ -289,31 +290,47 @@ for k = 1:length(ROIs_label)
     end   
     fclose(fid);
     
-%{    
-    % MAIN EFFECT of context (collapsed across stay-switch-single)
-    fprintf('\nCUE window -> Main effect of context:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_12vs34', data.cuechstay, data.cuechswitch, data.cueenstay, data.cueenswitch);
-    %cfg.latency = latency_cue; % time interval over which the experimental 
-    [cue_lang.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-    fprintf('\nTARGET window -> Main effect of lang:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_12vs34', data.targetchstay, data.targetchswitch, data.targetenstay, data.targetenswitch); %'2-1 vs 4-3');
-    %cfg.latency = latency_target; % time interval over which the experimental 
-    [target_lang.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
 
-    % MAIN EFFECT of switch (collapsed across contexts)
-    fprintf('\nCUE window -> Main effect of ttype:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_13vs24', data.cuechstay, data.cuechswitch, data.cueenstay, data.cueenswitch);
+    % MAIN EFFECT of context (collapsed across stay-switch-single)
+    fprintf('\n= Main effects =\n');
+    fprintf('\nMain effect of context (3 comparisons):');
+    timelock_Nat = data.NatStay;
+    timelock_Art = data.ArtStay;
+    timelock_Bi = data.BiStay;
+    for i = 1:numSubjects
+        timelock_Nat{i}.avg = (data.NatStay{i}.avg + data.NatSwitch{i}.avg + data.NatSingle{i}.avg) / 3; % average across stay/switch/single
+        timelock_Art{i}.avg = (data.ArtStay{i}.avg + data.ArtSwitch{i}.avg + data.ArtSingle{i}.avg) / 3; % average across stay/switch/single
+        timelock_Bi{i}.avg = (data.BiStay{i}.avg + data.BiSwitch{i}.avg + data.BiSingle{i}.avg) / 3; % average across stay/switch/single
+    end
     %cfg.latency = latency_cue; % time interval over which the experimental 
-    [cue_ttype.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-    fprintf('\nTARGET window -> Main effect of ttype:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'main_13vs24', data.targetchstay, data.targetchswitch, data.targetenstay, data.targetenswitch); %'2-1 vs 4-3');
-    %cfg.latency = latency_target; % time interval over which the experimental 
-    [target_ttype.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-%}
+    fprintf('\n  -> Nat vs Bi');
+    [Context_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Bi{:});
+    fprintf('\n  -> Art vs Bi');
+    [Context_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Art{:}, timelock_Bi{:});
+    fprintf('\n  -> Nat vs Art');
+    [Context_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Art{:});
+    
+    % MAIN EFFECT of ttype (collapsed across nat-art-bi)
+    % We will test "switch effect" & "mixing effect" separately (no need to correct for 2 comparisons)
+    timelock_Stay = data.NatStay;
+    timelock_Switch = data.NatSwitch;
+    timelock_Single = data.NatSingle;
+    for i = 1:numSubjects
+        timelock_Stay{i}.avg = (data.NatStay{i}.avg + data.ArtStay{i}.avg + data.BiStay{i}.avg) / 3; % average across nat/art/bi
+        timelock_Switch{i}.avg = (data.NatSwitch{i}.avg + data.ArtSwitch{i}.avg + data.BiSwitch{i}.avg) / 3; 
+        timelock_Single{i}.avg = (data.NatSingle{i}.avg + data.ArtSingle{i}.avg + data.BiSingle{i}.avg) / 3;
+    end
+    %cfg.latency = latency_cue; % time interval over which the experimental 
+    fprintf('\nMain effect of switch:\n');
+    [Switch.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Stay{:}, timelock_Switch{:});
+    fprintf('\nMain effect of mix:\n');
+    [Mix.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:});
+
 end
 
-save([ResultsFolder_ROI_thisrun 'stats.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi', 'SwCost_art_vs_bi', 'MixCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_art');
-save([ResultsFolder_ROI_thisrun 'stats_pairwise.mat'], 'stats_pairwise');
+%save([ResultsFolder_ROI_thisrun 'stats.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi', 'SwCost_art_vs_bi', 'MixCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_art');
+%save([ResultsFolder_ROI_thisrun 'stats_pairwise.mat'], 'stats_pairwise');
+%save([ResultsFolder_ROI_thisrun 'stats_MainEffects.mat'], 'Context_nat_vs_bi', 'Context_art_vs_bi', 'Context_nat_vs_art', 'Switch', 'Mix');
 
 
 %% Find the effects & plot them
