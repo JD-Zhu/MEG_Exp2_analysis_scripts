@@ -188,7 +188,7 @@ for k = 1:length(ROIs_label)
     cfg.channel = {'all'}; % there is only one channel (i.e. the virtual sensor for this ROI)
     cfg.avgoverchan = 'yes'; % this is necessary (or else FT will ask for cfg.neighbours)
     
-    cfg.latency = [-0.1 0.75]; % time interval over which the experimental 
+    cfg.latency = [-0.1 0.6]; % time interval over which the experimental 
                          % conditions must be compared (in seconds)
     cfg.avgovertime = 'no'; % if yes, this will average over the entire time window chosen in cfg.latency 
                             % (useful when you want to look at a particular component, e.g. to look at M100,
@@ -198,73 +198,127 @@ for k = 1:length(ROIs_label)
     %cfg.neighbours = neighbours;  % same as defined for the between-trials experiment
 
     cfg.method = 'montecarlo'; %'analytic';
-    cfg.statistic = 'depsamplesT'; %cfg.statistic = 'ft_statfun_indepsamplesT'; OR 'ft_statfun_depsamplesFmultivariate';
     cfg.correctm = 'cluster'; %'no';
     cfg.clusteralpha = 0.05;
     cfg.clusterstatistic = 'maxsum';
     %cfg.clusterstatistic = 'wcm'; cfg.wcm_weight = 1;    
 
-    %cfg.minnbchan = 3; % minimum number of neighbourhood channels required to be significant 
-                       % in order to form a cluster 
-                       % (default: 0, ie. each single channel can be considered a cluster).
-                       % 4 or 5 is a good choice; 2 is too few coz it's even below
-                       % the resolution of the sensor layout(??)
-
-    cfg.tail = 0;
-    cfg.clustertail = 0; % 2 tailed test
     cfg.alpha = 0.1; % report all effects with p < 0.1
-    cfg.correcttail = 'prob'; % correct for 2-tailedness
     cfg.numrandomization = 2000; % Rule of thumb: use 500, and double this number if it turns out 
         % that the p-value differs from the critical alpha-level (0.05 or 0.01) by less than 0.02
 
     numSubjects = length(files);
-    within_design_2x2 = zeros(2, 2*numSubjects);
-    within_design_2x2(1, :) = repmat(1:numSubjects, 1, 2);
-    within_design_2x2(2, 1:numSubjects) = 1;
-    within_design_2x2(2, numSubjects+1:2*numSubjects) = 2;
+    within_design_1x2 = zeros(2, 2*numSubjects);
+    within_design_1x2(1, :) = repmat(1:numSubjects, 1, 2);
+    within_design_1x2(2, 1:numSubjects) = 1;
+    within_design_1x2(2, numSubjects+1:2*numSubjects) = 2;
 
-    cfg.design = within_design_2x2;
+    within_design_1x3 = zeros(2, 3*numSubjects);
+    within_design_1x3(1, :) = repmat(1:numSubjects, 1, 3);
+    within_design_1x3(2, 1:numSubjects) = 1;
+    within_design_1x3(2, numSubjects+1:2*numSubjects) = 2;
+    within_design_1x3(2, 2*numSubjects+1:3*numSubjects) = 3;
+    
     cfg.uvar  = 1; % row of design matrix that contains unit variable (in this case: subjects)
     cfg.ivar  = 2; % row of design matrix that contains independent variable (i.e. the conditions)
 
-    % Run the statistical tests
     
-    % INTERACTION (i.e. calc sw$ in each context, then submit the 2 sw$ for comparison)
-    fprintf('\n= 2x2 interactions (i.e. 3 comparisons for sw$, 3 comparisons for mix$) =\n\n');
-    fprintf('\nNat vs Bi');
-    fprintf('\n  -> Testing valence x switch interaction:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.BiStay, data.BiSwitch);
-    %cfg.latency = latency_cue; % time interval over which the experimental 
-    [SwCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-    fprintf('\n  -> Testing valence x mix interaction:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.BiSingle, data.BiStay); %'2-1 vs 4-3');
-    %cfg.latency = latency_target; % time interval over which the experimental 
-    [MixCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
+    %----- Run the statistical tests -----%
+     
+    % Use 'F test' for interaction & main effects (coz there are 3 levels in "context")
+    cfg.statistic = 'ft_statfun_depsamplesFunivariate';
+    cfg.design = within_design_1x3;
+    cfg.tail = 1; % -1 = left, 1 = right
+    cfg.clustertail = 1; % for F test, can only select right-sided tail
+                         % https://github.com/fieldtrip/fieldtrip/blob/master/statfun/ft_statfun_depsamplesFunivariate.m
+
+    % INTERACTION (i.e. calc sw$ in each context, then submit the 3 sw$ to F-test)
+    fprintf('\n= Sw$ interaction (i.e. compare sw$ in 3 contexts using an F test) =\n');
+    [timelock_SwCost_Nat, timelock_SwCost_Bi] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.BiStay, data.BiSwitch); %'2-1 vs 4-3'
+    [timelock_SwCost_Art, ~] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtStay, data.ArtSwitch, data.BiStay, data.BiSwitch);
+    [SwCost_interaction.(ROI_name)] = ft_timelockstatistics(cfg, timelock_SwCost_Nat{:}, timelock_SwCost_Art{:}, timelock_SwCost_Bi{:});
     
-    fprintf('\nArt vs Bi');
-    fprintf('\n  -> Testing valence x switch interaction:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtStay, data.ArtSwitch, data.BiStay, data.BiSwitch);
-    %cfg.latency = latency_cue; % time interval over which the experimental 
-    [SwCost_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-    fprintf('\n  -> Testing valence x mix interaction:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtSingle, data.ArtStay, data.BiSingle, data.BiStay); %'2-1 vs 4-3');
-    %cfg.latency = latency_target; % time interval over which the experimental 
-    [MixCost_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
+    fprintf('\n= Mix$ interaction (i.e. compare mix$ in 3 contexts using an F test) =\n');
+    [timelock_MixCost_Nat, timelock_MixCost_Bi] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.BiSingle, data.BiStay);
+    [timelock_MixCost_Art, ~] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtSingle, data.ArtStay, data.BiSingle, data.BiStay);
+    [MixCost_interaction.(ROI_name)] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Art{:}, timelock_MixCost_Bi{:});
+       
+    % MAIN EFFECT of context (collapsed across single-stay-switch)
+    fprintf('\n= Main effect of context (F test) =\n');
+    timelock_Nat = data.NatStay;
+    timelock_Art = data.ArtStay;
+    timelock_Bi = data.BiStay;
+    for i = 1:numSubjects
+        timelock_Nat{i}.avg = (data.NatStay{i}.avg + data.NatSwitch{i}.avg + data.NatSingle{i}.avg) / 3; % average across stay/switch/single
+        timelock_Art{i}.avg = (data.ArtStay{i}.avg + data.ArtSwitch{i}.avg + data.ArtSingle{i}.avg) / 3; % average across stay/switch/single
+        timelock_Bi{i}.avg = (data.BiStay{i}.avg + data.BiSwitch{i}.avg + data.BiSingle{i}.avg) / 3; % average across stay/switch/single
+    end
+    [Main_Context.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Art{:}, timelock_Bi{:});
+
+    % MAIN EFFECT of ttype (collapsed across nat-art-bi)
+    fprintf('\n= Main effect of ttype (F test) =\n');
+    timelock_Stay = data.NatStay;
+    timelock_Switch = data.NatSwitch;
+    timelock_Single = data.NatSingle;
+    for i = 1:numSubjects
+        timelock_Stay{i}.avg = (data.NatStay{i}.avg + data.ArtStay{i}.avg + data.BiStay{i}.avg) / 3; % average across nat/art/bi
+        timelock_Switch{i}.avg = (data.NatSwitch{i}.avg + data.ArtSwitch{i}.avg + data.BiSwitch{i}.avg) / 3; 
+        timelock_Single{i}.avg = (data.NatSingle{i}.avg + data.ArtSingle{i}.avg + data.BiSingle{i}.avg) / 3;
+    end
+    [Main_Ttype.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:}, timelock_Switch{:});
+
     
-    fprintf('\nNat vs Art');
-    fprintf('\n  -> Testing valence x switch interaction:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.ArtStay, data.ArtSwitch);
-    %cfg.latency = latency_cue; % time interval over which the experimental 
-    [SwCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
-    fprintf('\n  -> Testing valence x mix interaction:\n');
-    [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.ArtSingle, data.ArtStay); %'2-1 vs 4-3');
-    %cfg.latency = latency_target; % time interval over which the experimental 
-    [MixCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
- 
+    % UNPACKING main effects & interactions
+    cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
+    cfg.design = within_design_1x2;
+    cfg.tail = -1; % -1 = left, 1 = right
+    cfg.clustertail = -1; % use left-sided tail, coz I always put the smaller cond first when calling ft_timelockstatistics()
+
+    % To unpack the interactions, we compare the sw$ & mix$ for each pair of contexts (i.e. nat_vs_bi, art_vs_bi, nat_vs_art)
+    fprintf('\n\n= Sw$ Interaction - Unpacking (3 t-tests) =\n');
+    fprintf('\n  -> Nat vs Bi');
+    [SwCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_SwCost_Nat{:}, timelock_SwCost_Bi{:});
+    fprintf('\n  -> Art vs Bi');
+    [SwCost_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_SwCost_Art{:}, timelock_SwCost_Bi{:});
+    fprintf('\n  -> Nat vs Art');
+    [SwCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_SwCost_Nat{:}, timelock_SwCost_Art{:});
     
-    % SANITY CHECK - did we find a switch cost in Bivalent context?
-    % (here we also perform all the planned pairwise comparisons within each context)
-    fprintf('\n= Planned pairwise comparisons to assess sw$ & mix$ within each context\n');
+    fprintf('\n = Mix$ interaction - Unpacking (3 t-tests) =\n');
+    fprintf('\n  -> Nat vs Bi');
+    [MixCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Bi{:});
+    fprintf('\n  -> Art vs Bi');
+    [MixCost_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_MixCost_Art{:}, timelock_MixCost_Bi{:});
+    fprintf('\n  -> Nat vs Art');
+    [MixCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Art{:});
+
+    % To unpack the main effect of context, we conduct 3 pairwise comparisons
+    fprintf('\n= Main effect of context - Unpacking (3 t-tests) =\n');
+    fprintf('\n  -> Nat vs Bi');
+    [Context_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Bi{:});
+    fprintf('\n  -> Art vs Bi');
+    [Context_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Art{:}, timelock_Bi{:});
+    fprintf('\n  -> Nat vs Art');
+    [Context_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Art{:});
+    
+    % For the main effect of ttype, instead of unpacking it (ie. conducting 3 pairwise comparisons & applying Bonferroni),
+    % we can prob justify testing "switch effect" & "mixing effect" separately (no need to correct for MCP)
+    fprintf('\n= Main effect of ttype - We will unpack Switch & Mix separately =\n');
+    fprintf('\nMain effect of switch: (t-test)\n');
+    [Switch.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Stay{:}, timelock_Switch{:});
+    fprintf('\nMain effect of mix: (t-test)\n');
+    [Mix.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:});
+
+
+    % PLANNED PAIRWISE COMPARISONS within each context 
+    % (previously called "SANITY CHECK" - did we find a switch cost in Bivalent context?)
+    
+    % Currently using left-tailed t-tests, i.e. stay < switch, single < stay
+    % Can change to 2-tailed test if you want:
+    %cfg.tail = 0;
+    %cfg.clustertail = 0; % 2 tailed test
+    %cfg.correcttail = 'prob'; % correct for 2-tailedness
+    
+    fprintf('\n\n= Planned pairwise comparisons to assess sw$ & mix$ within each context\n');
     [stats_pairwise.Bi_sw.(ROI_name)] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
     [stats_pairwise.Bi_mix.(ROI_name)] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
     [stats_pairwise.Nat_sw.(ROI_name)] = ft_timelockstatistics(cfg, data.NatStay{:}, data.NatSwitch{:}); 
@@ -290,54 +344,22 @@ for k = 1:length(ROIs_label)
     end   
     fclose(fid);
     
-
-    % MAIN EFFECT of context (collapsed across stay-switch-single)
-    fprintf('\n= Main effects =\n');
-    fprintf('\nMain effect of context (3 comparisons):');
-    timelock_Nat = data.NatStay;
-    timelock_Art = data.ArtStay;
-    timelock_Bi = data.BiStay;
-    for i = 1:numSubjects
-        timelock_Nat{i}.avg = (data.NatStay{i}.avg + data.NatSwitch{i}.avg + data.NatSingle{i}.avg) / 3; % average across stay/switch/single
-        timelock_Art{i}.avg = (data.ArtStay{i}.avg + data.ArtSwitch{i}.avg + data.ArtSingle{i}.avg) / 3; % average across stay/switch/single
-        timelock_Bi{i}.avg = (data.BiStay{i}.avg + data.BiSwitch{i}.avg + data.BiSingle{i}.avg) / 3; % average across stay/switch/single
-    end
-    %cfg.latency = latency_cue; % time interval over which the experimental 
-    fprintf('\n  -> Nat vs Bi');
-    [Context_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Bi{:});
-    fprintf('\n  -> Art vs Bi');
-    [Context_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Art{:}, timelock_Bi{:});
-    fprintf('\n  -> Nat vs Art');
-    [Context_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Art{:});
-    
-    % MAIN EFFECT of ttype (collapsed across nat-art-bi)
-    % We will test "switch effect" & "mixing effect" separately (no need to correct for 2 comparisons)
-    timelock_Stay = data.NatStay;
-    timelock_Switch = data.NatSwitch;
-    timelock_Single = data.NatSingle;
-    for i = 1:numSubjects
-        timelock_Stay{i}.avg = (data.NatStay{i}.avg + data.ArtStay{i}.avg + data.BiStay{i}.avg) / 3; % average across nat/art/bi
-        timelock_Switch{i}.avg = (data.NatSwitch{i}.avg + data.ArtSwitch{i}.avg + data.BiSwitch{i}.avg) / 3; 
-        timelock_Single{i}.avg = (data.NatSingle{i}.avg + data.ArtSingle{i}.avg + data.BiSingle{i}.avg) / 3;
-    end
-    %cfg.latency = latency_cue; % time interval over which the experimental 
-    fprintf('\nMain effect of switch:\n');
-    [Switch.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Stay{:}, timelock_Switch{:});
-    fprintf('\nMain effect of mix:\n');
-    [Mix.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:});
-
 end
 
-%save([ResultsFolder_ROI_thisrun 'stats.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi', 'SwCost_art_vs_bi', 'MixCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_art');
 %save([ResultsFolder_ROI_thisrun 'stats_pairwise.mat'], 'stats_pairwise');
-%save([ResultsFolder_ROI_thisrun 'stats_MainEffects.mat'], 'Context_nat_vs_bi', 'Context_art_vs_bi', 'Context_nat_vs_art', 'Switch', 'Mix');
+%save([ResultsFolder_ROI_thisrun 'stats_Interactions.mat'], 'SwCost_interaction', 'MixCost_interaction');
+%save([ResultsFolder_ROI_thisrun 'stats_Interactions_unpack.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi', 'SwCost_art_vs_bi', 'MixCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_art');
+%save([ResultsFolder_ROI_thisrun 'stats_MainEffects.mat'], 'Main_Context', 'Main_Ttype');
+%save([ResultsFolder_ROI_thisrun 'stats_MainEffects_unpack.mat'], 'Context_nat_vs_bi', 'Context_art_vs_bi', 'Context_nat_vs_art', 'Switch', 'Mix');
 
 
 %% Find the effects & plot them
 % Automatically check all the stats output & read out the time interval
 % of each effect (from the stat.mask field)
 
-stats = load([ResultsFolder_ROI_thisrun 'stats.mat']);
+close all;
+
+%stats = load([ResultsFolder_ROI_thisrun 'stats_Interactions.mat']); % select which stats output file to look at
 load([ResultsFolder_ROI_thisrun 'GA_avg.mat']);
 load([ResultsFolder_ROI_thisrun 'GA_individuals.mat']);
 
@@ -382,43 +404,49 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
 
         % do a GA plot for all contrasts that have an effect (will add gray box to show effect interval later)
         % also do a GA plot for all ROIs that don't have an effect (save in 'non-sig' folder); we don't need to plot all 3 contrasts for each ROI ('nat_vs_art', 'nat_vs_bi', 'art_vs_bi') - they are the same, just plot one
-        if ( ~isempty(effect) || strcmp(stat_name(end-8:end), 'nat_vs_bi') ) % can't compare the whole word 'interaction' here, coz some stat_names (e.g. 'cue_lang') are a shorter string
+        if ( ~isempty(effect)) % || strcmp(stat_name(end-8:end), 'nat_vs_bi') ) % can't compare the whole word 'interaction' here, coz some stat_names (e.g. 'cue_lang') are a shorter string
             % GA plot
             figure('Name', [stat_name ' in ' ROI_name], 'Position', get(0, 'Screensize')); % make the figure full-screen size
             hold on;
             
-            % grab the conds that are relevant for this stat_name
-            type_of_cost = stat_name(1:2); % 'Sw' or 'Mix'
-            type_of_contrast = stat_name(end-9:end); % 'nat_vs_art' or 'nat_vs_bi'
-            if strcmp(type_of_cost, 'Sw') % SwCost
-                % if we only want to plot the 2 contexts that showed sig interaction:
-                if strcmp(type_of_contrast, 'nat_vs_art')
-                    conds_to_plot = [1 2 4 5];
-                elseif strcmp(type_of_contrast, '_nat_vs_bi')
-                    conds_to_plot = [1 2 7 8];
-                else % 'art_vs_bi'
-                    conds_to_plot = [4 5 7 8];
+            % if this is a main effect, then plot all conds 
+            if strcmp(stat_name(1:3), 'Mai')
+                conds_to_plot = 1:9;
+            else % if this is an interaction, then
+                % grab the conds that are relevant for this stat_name
+                type_of_cost = stat_name(1:2); % 'Sw' or 'Mix'
+                %type_of_contrast = stat_name(end-9:end); % 'nat_vs_art' or 'nat_vs_bi'
+                if strcmp(type_of_cost, 'Sw') % SwCost
+                    %{
+                    % if we only want to plot the 2 contexts that showed sig interaction:
+                    if strcmp(type_of_contrast, 'nat_vs_art')
+                        conds_to_plot = [1 2 4 5];
+                    elseif strcmp(type_of_contrast, '_nat_vs_bi')
+                        conds_to_plot = [1 2 7 8];
+                    else % 'art_vs_bi'
+                        conds_to_plot = [4 5 7 8];
+                    end
+                    %}
+                    % if we want to plot all 3 contexts in same graph:
+                    conds_to_plot = [1 2 4 5 7 8];
+                elseif strcmp(type_of_cost, 'Mi') % MixCost
+                    %{
+                    % if we only want to plot the 2 contexts that showed sig interaction:
+                    if strcmp(type_of_contrast, 'nat_vs_art')
+                        conds_to_plot = [1 3 4 6];
+                    elseif strcmp(type_of_contrast, '_nat_vs_bi')
+                        conds_to_plot = [1 3 7 9];
+                    else % 'art_vs_bi'
+                        conds_to_plot = [4 6 7 9];
+                    end 
+                    %}
+                    % if we want to plot all 3 contexts in same graph:
+                    conds_to_plot = [1 3 4 6 7 9];                
                 end
-                
-                % if we want to plot all 3 contexts in same graph:
-                conds_to_plot = [1 2 4 5 7 8];
-            elseif strcmp(type_of_cost, 'Mi') % MixCost
-                % if we only want to plot the 2 contexts that showed sig interaction:
-                if strcmp(type_of_contrast, 'nat_vs_art')
-                    conds_to_plot = [1 3 4 6];
-                elseif strcmp(type_of_contrast, '_nat_vs_bi')
-                    conds_to_plot = [1 3 7 9];
-                else % 'art_vs_bi'
-                    conds_to_plot = [4 6 7 9];
-                end 
-                
-                % if we want to plot all 3 contexts in same graph:
-                conds_to_plot = [1 3 4 6 7 9];                
             end
             eventnames_subset = eventnames_real(conds_to_plot); 
             colours_subset = colours(conds_to_plot);
             lineTypes_subset = lineTypes(conds_to_plot);
-            
                 
             % each cycle plots 1 line (ie. 1 condition)
             for j = 1:length(eventnames_subset)
