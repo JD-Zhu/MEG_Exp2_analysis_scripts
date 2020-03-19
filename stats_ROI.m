@@ -307,16 +307,18 @@ for k = 1:length(ROIs_label)
     [Switch.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Stay{:}, timelock_Switch{:});
     fprintf('\nMain effect of mix: (t-test)\n');
     [Mix.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:});
+    %fprintf('\nAlso testing single-vs-switch: (t-test)\n');
+    %[Rubbish.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Switch{:});
 
-
+    
     % PLANNED PAIRWISE COMPARISONS within each context 
     % (previously called "SANITY CHECK" - did we find a switch cost in Bivalent context?)
     
     % Currently using left-tailed t-tests, i.e. stay < switch, single < stay
     % Can change to 2-tailed test if you want:
-    %cfg.tail = 0;
-    %cfg.clustertail = 0; % 2 tailed test
-    %cfg.correcttail = 'prob'; % correct for 2-tailedness
+    cfg.tail = 0;
+    cfg.clustertail = 0; % 2 tailed test
+    cfg.correcttail = 'prob'; % correct for 2-tailedness
     
     fprintf('\n\n= Planned pairwise comparisons to assess sw$ & mix$ within each context\n');
     [stats_pairwise.Bi_sw.(ROI_name)] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
@@ -343,7 +345,7 @@ for k = 1:length(ROIs_label)
         end
     end   
     fclose(fid);
-    
+   
 end
 
 %save([ResultsFolder_ROI_thisrun 'stats_pairwise.mat'], 'stats_pairwise');
@@ -359,7 +361,7 @@ end
 
 close all;
 
-%stats = load([ResultsFolder_ROI_thisrun 'stats_Interactions.mat']); % select which stats output file to look at
+stats = load([ResultsFolder_ROI_thisrun 'stats_Interactions.mat']); % select which stats output file to look at
 load([ResultsFolder_ROI_thisrun 'GA_avg.mat']);
 load([ResultsFolder_ROI_thisrun 'GA_individuals.mat']);
 
@@ -409,40 +411,37 @@ for i = 1:length(stats_names) % each cycle handles one effect (e.g. cue_lang)
             figure('Name', [stat_name ' in ' ROI_name], 'Position', get(0, 'Screensize')); % make the figure full-screen size
             hold on;
             
-            % if this is a main effect, then plot all conds 
-            if strcmp(stat_name(1:3), 'Mai')
-                conds_to_plot = 1:9;
-            else % if this is an interaction, then
-                % grab the conds that are relevant for this stat_name
-                type_of_cost = stat_name(1:2); % 'Sw' or 'Mix'
-                %type_of_contrast = stat_name(end-9:end); % 'nat_vs_art' or 'nat_vs_bi'
-                if strcmp(type_of_cost, 'Sw') % SwCost
-                    %{
-                    % if we only want to plot the 2 contexts that showed sig interaction:
-                    if strcmp(type_of_contrast, 'nat_vs_art')
-                        conds_to_plot = [1 2 4 5];
-                    elseif strcmp(type_of_contrast, '_nat_vs_bi')
-                        conds_to_plot = [1 2 7 8];
-                    else % 'art_vs_bi'
-                        conds_to_plot = [4 5 7 8];
-                    end
-                    %}
-                    % if we want to plot all 3 contexts in same graph:
-                    conds_to_plot = [1 2 4 5 7 8];
-                elseif strcmp(type_of_cost, 'Mi') % MixCost
-                    %{
-                    % if we only want to plot the 2 contexts that showed sig interaction:
-                    if strcmp(type_of_contrast, 'nat_vs_art')
-                        conds_to_plot = [1 3 4 6];
-                    elseif strcmp(type_of_contrast, '_nat_vs_bi')
-                        conds_to_plot = [1 3 7 9];
-                    else % 'art_vs_bi'
-                        conds_to_plot = [4 6 7 9];
-                    end 
-                    %}
-                    % if we want to plot all 3 contexts in same graph:
-                    conds_to_plot = [1 3 4 6 7 9];                
+            % grab the conds that are relevant for this stat_name
+            type_of_cost = stat_name(1:2); % 'Sw' or 'Mix'
+            %type_of_contrast = stat_name(end-9:end); % 'nat_vs_art' or 'nat_vs_bi'
+            if strcmp(type_of_cost, 'Sw') % SwCost
+                %{
+                % if we only want to plot the 2 contexts that showed sig interaction:
+                if strcmp(type_of_contrast, 'nat_vs_art')
+                    conds_to_plot = [1 2 4 5];
+                elseif strcmp(type_of_contrast, '_nat_vs_bi')
+                    conds_to_plot = [1 2 7 8];
+                else % 'art_vs_bi'
+                    conds_to_plot = [4 5 7 8];
                 end
+                %}
+                % if we want to plot all 3 contexts in same graph:
+                conds_to_plot = [1 2 4 5 7 8];
+            elseif strcmp(type_of_cost, 'Mi') % MixCost
+                %{
+                % if we only want to plot the 2 contexts that showed sig interaction:
+                if strcmp(type_of_contrast, 'nat_vs_art')
+                    conds_to_plot = [1 3 4 6];
+                elseif strcmp(type_of_contrast, '_nat_vs_bi')
+                    conds_to_plot = [1 3 7 9];
+                else % 'art_vs_bi'
+                    conds_to_plot = [4 6 7 9];
+                end 
+                %}
+                % if we want to plot all 3 contexts in same graph:
+                conds_to_plot = [1 3 4 6 7 9];                
+            else % in all other cases (e.g. main effects, pairwise comparisons), plot all conds
+                conds_to_plot = 1:9;
             end
             eventnames_subset = eventnames_real(conds_to_plot); 
             colours_subset = colours(conds_to_plot);
