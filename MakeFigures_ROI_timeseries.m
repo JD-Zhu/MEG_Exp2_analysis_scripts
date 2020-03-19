@@ -4,18 +4,23 @@
 function MakeFigures_ROI_timeseries
 
     % run the #define section to obtain values for global vars
-    global ResultsFolder_ROI; 
-    global PLOT_SHADE; global colours; % for plotting shaded boundary on each time course
+    global ResultsFolder_ROI;
+    global colours; global lineTypes; global PLOT_XLIM;
+    global PLOT_SHADE; % for plotting shaded boundary on each time course
     common();
+    
+    % SELECT which set of ROI results to use
+    ResultsFolder_ROI_thisrun = [ResultsFolder_ROI 'TSPCA10000_3_freeori\\'];
 
-    temp = load([ResultsFolder_ROI 'GA.mat']);
+    temp = load([ResultsFolder_ROI_thisrun 'GA_avg.mat']);
     GA = temp.GA;
-    temp = load([ResultsFolder_ROI 'GA_individuals.mat']);
+    temp = load([ResultsFolder_ROI_thisrun 'GA_individuals.mat']);
     GA_indi = temp.GA_indi;
 
 
-    %% Effect 1: cue_interaction_LIFG_315-345ms, p = 0.0300
+    %% Exp1 - effect 1: cue_interaction_LIFG_315-345ms, p = 0.0300
     % [L2 positive sw$, L1 negative sw$; neither was sig in posthoc t-test]
+%{
     ROI_name = 'LIFG';
     start_time = 0.315;
     end_time = 0.345;
@@ -82,28 +87,35 @@ function MakeFigures_ROI_timeseries
     
     set(lines, 'Linewidth',3); % line thickness
     hold off;
+%}
+    
+    %% Effect 1: Main effect of Context in RACC
+    ROI_name = 'RACC';
+    figure_name = ['MainEffect_Context_' ROI_name '_125-150ms'];
+    start_time = 0.125;
+    end_time = 0.150;
+    
+    % for a main effect of Context, we extract the relevant colours & lingtypes for plots
+    colours_subset = colours([1 4 7]);
+    lineTypes_subset = lineTypes([1 4 7]);
 
-
-    %% Effect 2: target_lang_RIFG_200-235ms_p=0.046
-    % [L2 > L1]
-    ROI_name = 'RIFG';
-    start_time = 0.200;
-    end_time = 0.235;
-
-
-    % collapse into 2 conditions, based on the cross-subject grand avg
-    % (these will be the 2 lines in the plot, each line shows the time course for 1 collapsed cond)
-    en = GA.(ROI_name).targetenstay;
-    en.avg = (GA.(ROI_name).targetenstay.avg + GA.(ROI_name).targetenswitch.avg) / 2;
-    ch = GA.(ROI_name).targetchstay;
-    ch.avg = (GA.(ROI_name).targetchstay.avg + GA.(ROI_name).targetchswitch.avg) / 2;
+    
+    % collapse across Ttypes
+    % (3 lines in the plot, each line shows the time course for 1 Context)
+    GA_Nat = GA.(ROI_name).NatStay;
+    GA_Nat.avg = (GA.(ROI_name).NatStay.avg + GA.(ROI_name).NatSwitch.avg + GA.(ROI_name).NatSingle.avg) / 3; % average across stay/switch/single
+    GA_Art = GA.(ROI_name).ArtStay;
+    GA_Art.avg = (GA.(ROI_name).ArtStay.avg + GA.(ROI_name).ArtSwitch.avg + GA.(ROI_name).ArtSingle.avg) / 3; % average across stay/switch/single
+    GA_Bi = GA.(ROI_name).BiStay;
+    GA_Bi.avg = (GA.(ROI_name).BiStay.avg + GA.(ROI_name).BiSwitch.avg + GA.(ROI_name).BiSingle.avg) / 3; % average across stay/switch/single
 
     % baseline correction
+    %{
     cfg = [];
     cfg.baseline = [-0.1 0];
     en = ft_timelockbaseline(cfg, en); 
     ch = ft_timelockbaseline(cfg, ch); 
-
+    %}
 
     % if plotting shaded boundary, need to do the following:
     % collapse into 2 conditions, based on each individual subject's ROI time course
@@ -117,21 +129,22 @@ function MakeFigures_ROI_timeseries
 
     
     % plot
-    figure('Name', 'target_lang_RIFG_200-235ms'); hold on;
+    figure('Name', figure_name); hold on;
 
     if strcmp(PLOT_SHADE, 'no') % do not plot shaded boundary, only plot the lines                 
-        plot(en.time, en.avg); % 'LineWidth',3
-        plot(ch.time, ch.avg); % 'LineWidth',3
-    else
+        plot(GA_Nat.time, GA_Nat.avg, 'Color',colours_subset{1}, 'LineStyle',lineTypes_subset{1}); % 'LineWidth',3
+        plot(GA_Art.time, GA_Art.avg, 'Color',colours_subset{2}, 'LineStyle',lineTypes_subset{2});
+        plot(GA_Bi.time, GA_Bi.avg, 'Color',colours_subset{3}, 'LineStyle',lineTypes_subset{3});
+    else % old code below (from exp 1), need to update if using
         margin_en = calc_margin(en_indi.individual, PLOT_SHADE);
         margin_ch = calc_margin(ch_indi.individual, PLOT_SHADE);
         
         % plot time courses with shaded boundary
-        boundedline(en.time, en.avg, margin_en(:), 'alpha', 'transparency',0.15, colours(1));
-        boundedline(ch.time, ch.avg, margin_ch(:), 'alpha', 'transparency',0.15, colours(2));        
+        boundedline(en.time, en.avg, margin_en(:), 'alpha', 'transparency',0.15, colours_subset(1));
+        boundedline(ch.time, ch.avg, margin_ch(:), 'alpha', 'transparency',0.15, colours_subset(2));        
     end
 
-    xlim([-0.1 0.55]);
+    xlim(PLOT_XLIM);
     xlabel('Seconds');
     ylabel('Ampere per square metre');
     set(gca, 'LineWidth',1.5, 'FontSize',22); % set axes properties
@@ -141,19 +154,108 @@ function MakeFigures_ROI_timeseries
     ylimits = ylim; ylow = ylimits(1); yhigh = ylimits(2);
     x = [start_time end_time end_time start_time]; % specify x,y coordinates of the 4 corners
     y = [ylow ylow yhigh yhigh];
-    patch(x,y,'black', 'FaceAlpha',0.15) % draw the shade (FaceAlpha is transparency)
+    patch(x,y,'black', 'FaceAlpha',0.3) % draw the shade (FaceAlpha is transparency)
     ylim(ylimits); % ensure ylim doesn't get expanded
 
     % specify the legend manually (otherwise it will include
     % each shaded patch as an item too). For some reason,
     % the order of the lines are reversed when you grab them
     lines = findall(gcf, 'Type','line');
-    legend(flip(lines), {'English (L2)', 'Mandarin (L1)'}, 'Location','northwest', 'FontSize',30);
+    legend(flip(lines), {'Nat', 'Art', 'Bi'}, 'Location','northwest', 'FontSize',30);
     
     set(lines, 'Linewidth',3); % line thickness
     hold off;
 
+    
+    % save the plot
+    %filename = [figure_name '.png'];
+    %export_fig(gcf, [ResultsFolder_ROI_thisrun 'Figures\\' filename]); % use this tool to save the figure exactly as shown on screen
 
+    
+    %% Effect 2: Main effect of Context in RACC
+    ROI_name = 'LSMA';
+    figure_name = ['MainEffect_Ttype_' ROI_name '_230-245ms_395-425ms'];
+    start_time = 0.230;
+    end_time = 0.245;
+
+    % for a main effect of Ttype, we extract the relevant colours & linetypes for plots
+    colours_subset = colours([4 4 4]);
+    lineTypes_subset = lineTypes([1 2 3]);
+
+    
+    % collapse across Contexts
+    % (3 lines in the plot, each line shows the time course for 1 Ttype)
+    GA_Stay = GA.(ROI_name).NatStay;
+    GA_Stay.avg = (GA.(ROI_name).NatStay.avg + GA.(ROI_name).ArtStay.avg + GA.(ROI_name).BiStay.avg) / 3; % average across stay/switch/single
+    GA_Switch = GA.(ROI_name).NatSwitch;
+    GA_Switch.avg = (GA.(ROI_name).NatSwitch.avg + GA.(ROI_name).ArtSwitch.avg + GA.(ROI_name).BiSwitch.avg) / 3; % average across stay/switch/single
+    GA_Single = GA.(ROI_name).NatSingle;
+    GA_Single.avg = (GA.(ROI_name).NatSingle.avg + GA.(ROI_name).ArtSingle.avg + GA.(ROI_name).BiSingle.avg) / 3; % average across stay/switch/single
+
+    % if plotting shaded boundary, need to do the following:
+    % collapse into 2 conditions, based on each individual subject's ROI time course
+    % (these will be used to calc the shaded boundary around each line in the plot)
+    if ~strcmp(PLOT_SHADE, 'no')
+        en_indi = GA_indi.(ROI_name).targetenstay;
+        en_indi.individual = (GA_indi.(ROI_name).targetenstay.individual + GA_indi.(ROI_name).targetenswitch.individual) / 2;
+        ch_indi = GA_indi.(ROI_name).targetchstay;
+        ch_indi.individual = (GA_indi.(ROI_name).targetchstay.individual + GA_indi.(ROI_name).targetchswitch.individual) / 2;
+    end
+
+    
+    % plot
+    figure('Name', figure_name); hold on;
+
+    if strcmp(PLOT_SHADE, 'no') % do not plot shaded boundary, only plot the lines                 
+        plot(GA_Stay.time, GA_Stay.avg, 'Color',colours_subset{1}, 'LineStyle',lineTypes_subset{1}); % 'LineWidth',3
+        plot(GA_Switch.time, GA_Switch.avg, 'Color',colours_subset{2}, 'LineStyle',lineTypes_subset{2});
+        plot(GA_Single.time, GA_Single.avg, 'Color',colours_subset{3}, 'LineStyle',lineTypes_subset{3});
+    else % old code below (from exp 1), need to update if using
+        margin_en = calc_margin(en_indi.individual, PLOT_SHADE);
+        margin_ch = calc_margin(ch_indi.individual, PLOT_SHADE);
+        
+        % plot time courses with shaded boundary
+        boundedline(en.time, en.avg, margin_en(:), 'alpha', 'transparency',0.15, colours_subset(1));
+        boundedline(ch.time, ch.avg, margin_ch(:), 'alpha', 'transparency',0.15, colours_subset(2));        
+    end
+
+    xlim(PLOT_XLIM);
+    xlabel('Seconds');
+    ylabel('Ampere per square metre');
+    set(gca, 'LineWidth',1.5, 'FontSize',22); % set axes properties
+    box on; % draw a border around the figure
+
+    % create shaded region indicating effect duration
+    % cluster #1
+    ylimits = ylim; ylow = ylimits(1); yhigh = ylimits(2);
+    x = [start_time end_time end_time start_time]; % specify x,y coordinates of the 4 corners
+    y = [ylow ylow yhigh yhigh];
+    patch(x,y,'black', 'FaceAlpha',0.3) % draw the shade (FaceAlpha is transparency)
+    ylim(ylimits); % ensure ylim doesn't get expanded
+    % cluster #2
+    start_time = 0.395;
+    end_time = 0.425;
+    ylimits = ylim; ylow = ylimits(1); yhigh = ylimits(2);
+    x = [start_time end_time end_time start_time]; % specify x,y coordinates of the 4 corners
+    y = [ylow ylow yhigh yhigh];
+    patch(x,y,'black', 'FaceAlpha',0.3) % draw the shade (FaceAlpha is transparency)
+    ylim(ylimits); % ensure ylim doesn't get expanded
+
+    % specify the legend manually (otherwise it will include
+    % each shaded patch as an item too). For some reason,
+    % the order of the lines are reversed when you grab them
+    lines = findall(gcf, 'Type','line');
+    legend(flip(lines), {'Stay', 'Switch', 'Single'}, 'Location','northwest', 'FontSize',30);
+    
+    set(lines, 'Linewidth',3); % line thickness
+    hold off;
+
+    
+    % save the plot
+    %filename = [figure_name '.png'];
+    %export_fig(gcf, [ResultsFolder_ROI_thisrun 'Figures\\' filename]); % use this tool to save the figure exactly as shown on screen
+
+    
     %% Marginal effects
     %{
     % cue_lang
