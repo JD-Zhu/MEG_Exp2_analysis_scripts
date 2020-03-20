@@ -5,7 +5,10 @@
 % Then, run the following code to extract a single value for each 
 % subject in each condition (avg over time)
 
-% Based on the finding - choose one of these:
+% [obsolete] For the "test bivalent first" logic (find sw$ & mix$ in bivalent,
+% then avgovertime in those clusters to test for interaction)
+%{
+% Based on the finding - choose one of these: 
 % (1) Bi_sw in LIFG, p = 0.077, between 425~450 ms
 ROI_name = 'LIFG';
 start_sample = 246; % check the .time field in "data", to find the sample indices corresponding to the time interval above
@@ -15,6 +18,22 @@ end_sample = 251;
 ROI_name = 'RIFG';
 start_sample = 203; % check the .time field in "data", to find the sample indices corresponding to the time interval above
 end_sample = 213;
+%}
+
+% Now we use this to unpack main effects.
+% Choose one of the following to unpack:
+% (1) Main effect of Context in RACC, 125-150ms
+ROI_name = 'RACC';
+start_sample = 186; % check the .time field in "data", to find the sample indices corresponding to the time interval above
+end_sample = 191;
+% (2) Main effect of Ttype in LSMA, 230~245 ms
+ROI_name = 'LSMA';
+start_sample = 207; % check the .time field in "data", to find the sample indices corresponding to the time interval above
+end_sample = 210;
+% (3) Main effect of Ttype in LSMA, 395~425 ms
+ROI_name = 'LSMA';
+start_sample = 240; % check the .time field in "data", to find the sample indices corresponding to the time interval above
+end_sample = 246;
 
 
 data = allSubjects_ROIs.(ROI_name); % data for the current ROI
