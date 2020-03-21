@@ -388,7 +388,7 @@ if ~contains(ResultsFolder_ROI_thisrun, 'freeori')
     end
 end
 
-% loop thru all 6 stats output (cue/target lang/ttype/interxn) and loop thru all ROIs in each,
+% loop thru all the different contrasts & loop thru all ROIs in each,
 % check whether the .mask field has any non-zero entries 
 % (these are the effects & they are already cluster-corrected, so doesn't need to be consecutive 1s)
 fprintf('\nThe following effects were detected:\n');
