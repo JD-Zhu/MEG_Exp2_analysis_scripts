@@ -271,8 +271,12 @@ for k = 1:length(ROIs_label)
     % UNPACKING main effects & interactions
     cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
     cfg.design = within_design_1x2;
-    cfg.tail = -1; % -1 = left, 1 = right
-    cfg.clustertail = -1; % use left-sided tail, coz I always put the smaller cond first when calling ft_timelockstatistics()
+    %cfg.tail = -1; % -1 = left, 1 = right, 0 = 2-tailed
+    %cfg.clustertail = -1; % use left-sided tail, coz I always put the smaller cond first when calling ft_timelockstatistics()
+    % using 1-tailed t-test is generally frowned upon, so we change back to 2-tailed (and correct for it)
+    cfg.tail = 0; % -1 = left, 1 = right, 0 = 2-tailed
+    cfg.clustertail = 0; 
+    cfg.correcttail = 'prob'; % correct for 2-tailedness
 
     % To unpack the interactions, we compare the sw$ & mix$ for each pair of contexts (i.e. nat_vs_bi, art_vs_bi, nat_vs_art)
     fprintf('\n\n= Sw$ Interaction - Unpacking (3 t-tests) =\n');
@@ -312,10 +316,11 @@ for k = 1:length(ROIs_label)
 
     
     % PLANNED PAIRWISE COMPARISONS within each context 
-    % (previously called "SANITY CHECK" - did we find a switch cost in Bivalent context?)
+    % (previously known as "SANITY CHECK" - did we find a switch cost in Bivalent context?)
     
-    % Currently using left-tailed t-tests, i.e. stay < switch, single < stay
-    % Can change to 2-tailed test if you want:
+    % Make sure we are using 2-tailed t-tests (see expla above):
+    cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
+    cfg.design = within_design_1x2;
     cfg.tail = 0;
     cfg.clustertail = 0; % 2 tailed test
     cfg.correcttail = 'prob'; % correct for 2-tailedness

@@ -201,7 +201,6 @@ else % autoly detect temporal cluster
 end
 
 cfg.method = 'montecarlo';
-cfg.statistic = 'depsamplesT'; %cfg.statistic = 'ft_statfun_indepsamplesT'; OR 'ft_statfun_depsamplesFmultivariate';
 cfg.correctm = 'cluster'; %'no'; % it is common in MEG studies to run uncorrected at cfg.alpha = 0.001
 cfg.clusteralpha = 0.05; % threshold for selecting candidate samples to form clusters
 cfg.clusterstatistic = 'maxsum';
@@ -212,25 +211,26 @@ cfg.minnbchan = 3; % minimum number of neighbourhood channels required to be sig
                    % the resolution of the sensor layout (i.e. 2 adjacent sensors might
                    % really be measuring the same thing, so ofc they are both sig)
 
-cfg.tail = 0;
-cfg.clustertail = 0; % 2 tailed test
 cfg.alpha = 0.05; %0.001  % threshold for cluster-level statistics (any cluster with a p-value lower than this will be reported as sig - an entry of '1' in .mask field)
-cfg.correcttail = 'prob'; % correct for 2-tailedness
 cfg.numrandomization = 500; % Rule of thumb: use 500, and double this number if it turns out 
     % that the p-value differs from the chosen alpha (e.g. 0.05) by less than 0.02
 
 numSubjects = length(data.(eventnames_real{1})); % check how many subjects we are including
-within_design_2x2 = zeros(2,2*numSubjects);
-within_design_2x2(1,:) = repmat(1:numSubjects,1,2);
-within_design_2x2(2,1:numSubjects) = 1;
-within_design_2x2(2,numSubjects+1:2*numSubjects) = 2;
+within_design_1x2 = zeros(2,2*numSubjects);
+within_design_1x2(1,:) = repmat(1:numSubjects,1,2);
+within_design_1x2(2,1:numSubjects) = 1;
+within_design_1x2(2,numSubjects+1:2*numSubjects) = 2;
 
-cfg.design = within_design_2x2;
+within_design_1x3 = zeros(2, 3*numSubjects);
+within_design_1x3(1, :) = repmat(1:numSubjects, 1, 3);
+within_design_1x3(2, 1:numSubjects) = 1;
+within_design_1x3(2, numSubjects+1:2*numSubjects) = 2;
+within_design_1x3(2, 2*numSubjects+1:3*numSubjects) = 3;
+
 cfg.uvar  = 1; % row of design matrix that contains unit variable (in this case: subjects)
 cfg.ivar  = 2; % row of design matrix that contains independent variable (i.e. the conditions)
 
 cfg.latency = latency_cue;
-
 
 % 4 time windows to avg over
 %{
@@ -241,7 +241,25 @@ cfg.latency = [0.200 0.280]; % bi sw$ (corresponding to the RdlPFC effect in ###
 cfg.latency = [0.350 0.640]; % bi sw$ is found here (for cfg.minnbchan = 2)
 %}
 
-%% SANITY CHECK (ie. planned pairwise comparisons within each context)
+
+%----- Run the statistical tests -----%
+
+% Use 'F test' for interaction & main effects (coz there are 3 levels in "context")
+cfg.statistic = 'ft_statfun_depsamplesFunivariate';
+cfg.design = within_design_1x3;
+cfg.tail = 1; % -1 = left, 1 = right
+cfg.clustertail = 1; % for F test, can only select right-sided tail
+                     % https://github.com/fieldtrip/fieldtrip/blob/master/statfun/ft_statfun_depsamplesFunivariate.m
+
+
+%% PLANNED PAIRWISE COMPARISONS within each context 
+% (previously known as "SANITY CHECK")
+
+cfg.statistic = 'depsamplesT'; 
+cfg.tail = 0; % 2 tailed test
+cfg.clustertail = 0; % 2 tailed test
+cfg.correcttail = 'prob'; % correct for 2-tailedness
+
 % Switch cost in each context
 [Nat_sw] = ft_timelockstatistics(cfg, data.NatStay{:}, data.NatSwitch{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
 [Art_sw] = ft_timelockstatistics(cfg, data.ArtStay{:}, data.ArtSwitch{:});
