@@ -25,21 +25,25 @@ http://www.fieldtriptoolbox.org/faq/how_not_to_interpret_results_from_a_cluster-
 global ResultsFolder; 
 common();
 
+% SELECT which set of single-subject ERFs to use
+run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
+ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all subjects
 
 % load the results
-load([ResultsFolder 'stats.mat']);
-load([ResultsFolder 'lay.mat']);
-load([ResultsFolder 'GA_erf.mat']);
-load([ResultsFolder 'neighbours.mat']);
+load([ResultsFolder_thisrun 'stats_Interactions_minnbchan2.mat']);
+load([ResultsFolder_thisrun 'lay.mat']);
+load([ResultsFolder_thisrun 'neighbours.mat']);
+
+% SELECT which effect to plot & SPECIFY the effect duration
+stat_output = MixCost_interaction;
+start_time = 0.155;
+end_time = 0.200;
 
 % load nice colourmap
 ft_hastoolbox('brewermap', 1);         % ensure this toolbox is on the path
 cmap = colormap(flipud(brewermap(64, 'RdBu')));
 
-% select which effect to plot
-stat_output = target_lang;
-start_time = 0.360;
-end_time = 0.515;
+load([ResultsFolder_thisrun 'GA_erf.mat']); % takes a long time to load
 
 
 %% plot topography for axial gradiometers
@@ -138,10 +142,10 @@ cfg.method          = 'template';
 cfg.neighbours      = neighbours;
 
 cfg.planarmethod    = 'sincos';
-planar              = ft_megplanar(cfg, timelock); % plug in any timelock struct
+planar              = ft_megplanar(cfg, allSubjects_erf.NatStay{1,1}); % plug in any timelock struct
 
 % Combine the horizontal and vertical components 
-% of the planar gradient using Pythagoras rule
+% of the planar gradient using Pythagoras' Rule
 planarComb = ft_combineplanar([], planar);
 
 % Plot the planar gradient

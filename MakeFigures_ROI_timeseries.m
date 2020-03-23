@@ -10,15 +10,19 @@ function MakeFigures_ROI_timeseries
     common();
     
     % SELECT which set of ROI results to use
-    ResultsFolder_ROI_thisrun = [ResultsFolder_ROI 'TSPCA10000_3_freeori\\'];
+    run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
+    ResultsFolder_ROI_thisrun = [ResultsFolder_ROI run_name '\\'];
 
     temp = load([ResultsFolder_ROI_thisrun 'GA_avg.mat']);
     GA = temp.GA;
-    temp = load([ResultsFolder_ROI_thisrun 'GA_individuals.mat']);
-    GA_indi = temp.GA_indi;
+    % load indi GA only if plotting shaded boundary (otherwise don't load -> saves memory)
+    if ~strcmp(PLOT_SHADE, 'no')
+        temp = load([ResultsFolder_ROI_thisrun 'GA_individuals.mat']);
+        GA_indi = temp.GA_indi;
+    end
 
 
-    %% Exp1 - effect 1: cue_interaction_LIFG_315-345ms, p = 0.0300
+    %% From Exp1 - effect 1: cue_interaction_LIFG_315-345ms, p = 0.0300
     % [L2 positive sw$, L1 negative sw$; neither was sig in posthoc t-test]
 %{
     ROI_name = 'LIFG';

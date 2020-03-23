@@ -4,13 +4,21 @@
 
 % run the #define section to obtain values for global vars
 global ResultsFolder; 
-global PLOT_SHADE; global colours; % for plotting shaded boundary on each time course
+global colours; global lineTypes; global PLOT_XLIM;
+global PLOT_SHADE; % for plotting shaded boundary on each time course
 common();
 
+% SELECT which set of single-subject ERFs to use
+run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
+ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all subjects
+
+
 % load the results
-load([ResultsFolder 'GA_erf.mat']);
-load([ResultsFolder 'GA_individuals.mat']);
-load([ResultsFolder 'stats.mat']);
+load([ResultsFolder_thisrun 'GA_erf.mat']);
+if ~strcmp(PLOT_SHADE, 'no') % load indi GA only if plotting shaded boundary (otherwise don't load -> saves memory)
+    load([ResultsFolder_thisrun 'GA_individuals.mat']);
+end
+load([ResultsFolder_thisrun 'stats.mat']);
 
 
 %% Collapse GA into 2 conds:

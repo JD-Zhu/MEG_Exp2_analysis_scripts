@@ -39,6 +39,8 @@ global colours; global lineTypes;
 global PLOT_XLIM; global ERF_BASELINE;
 common();
 
+ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all subjects
+
 
 % initialise allSubjects_erf (each field holds all subjects' erf in that condition)
 allSubjects_erf.NatStay = {};
@@ -55,7 +57,6 @@ allSubjects_erf.BiSingle = {};
 %% Read data
 
 % find all .mat files in ResultsFolder_thisrun
-ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all subjects
 files = dir([ResultsFolder_thisrun '*_erf' filename_suffix '.mat']);
 
 % each cycle reads in one '.mat' file (ie. one subject's erf data)
@@ -195,7 +196,7 @@ if (AVGOVERTIME)
                             % (useful when you want to look at a particular component, e.g. to look at M100,
                             % cfg.latency = [0.08 0.12]; cfg.avgovertime = 'yes'; )
 else % autoly detect temporal cluster
-    latency_cue = [-0.1 0.75]; % time interval over which the experimental 
+    latency_cue = [-0.1 0.6]; % time interval over which the experimental 
                                % conditions must be compared (in seconds)
     cfg.avgovertime = 'no';
 end
@@ -244,45 +245,95 @@ cfg.latency = [0.350 0.640]; % bi sw$ is found here (for cfg.minnbchan = 2)
 
 %----- Run the statistical tests -----%
 
-% Use 'F test' for interaction & main effects (coz there are 3 levels in "context")
+%% Use 'F test' for interaction & main effects (coz there are 3 levels in "context")
 cfg.statistic = 'ft_statfun_depsamplesFunivariate';
 cfg.design = within_design_1x3;
 cfg.tail = 1; % -1 = left, 1 = right
 cfg.clustertail = 1; % for F test, can only select right-sided tail
                      % https://github.com/fieldtrip/fieldtrip/blob/master/statfun/ft_statfun_depsamplesFunivariate.m
 
+% INTERACTIONS
+cfg.minnbchan = 2;
 
-%% PLANNED PAIRWISE COMPARISONS within each context 
-% (previously known as "SANITY CHECK")
+% sw$ interaction (i.e. calc sw$ in each context, then submit the 3 sw$ to F-test)
+fprintf('\n= Sw$ interaction (i.e. compare sw$ in 3 contexts using an F test) =\n');
+[timelock_SwCost_Nat, timelock_SwCost_Bi] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.BiStay, data.BiSwitch); %'2-1 vs 4-3'
+[timelock_SwCost_Art, ~] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtStay, data.ArtSwitch, data.BiStay, data.BiSwitch);
+[SwCost_interaction] = ft_timelockstatistics(cfg, timelock_SwCost_Nat{:}, timelock_SwCost_Art{:}, timelock_SwCost_Bi{:});
 
-cfg.statistic = 'depsamplesT'; 
-cfg.tail = 0; % 2 tailed test
-cfg.clustertail = 0; % 2 tailed test
+% mix$ interaction (i.e. calc mix$ in each context, then submit the 3 mix$ to F-test)
+fprintf('\n= Mix$ interaction (i.e. compare mix$ in 3 contexts using an F test) =\n');
+[timelock_MixCost_Nat, timelock_MixCost_Bi] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.BiSingle, data.BiStay);
+[timelock_MixCost_Art, ~] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtSingle, data.ArtStay, data.BiSingle, data.BiStay);
+[MixCost_interaction] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Art{:}, timelock_MixCost_Bi{:});
+
+length(find(SwCost_interaction.mask))
+length(find(MixCost_interaction.mask))
+
+save([ResultsFolder_thisrun 'stats_Interactions_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'SwCost_interaction', 'MixCost_interaction');
+
+
+% MAIN EFFECT of context (collapsed across single-stay-switch)
+fprintf('\n= Main effect of context (F test) =\n');
+timelock_Nat = data.NatStay;
+timelock_Art = data.ArtStay;
+timelock_Bi = data.BiStay;
+for i = 1:numSubjects
+    timelock_Nat{i}.avg = (data.NatStay{i}.avg + data.NatSwitch{i}.avg + data.NatSingle{i}.avg) / 3; % average across stay/switch/single
+    timelock_Art{i}.avg = (data.ArtStay{i}.avg + data.ArtSwitch{i}.avg + data.ArtSingle{i}.avg) / 3; % average across stay/switch/single
+    timelock_Bi{i}.avg = (data.BiStay{i}.avg + data.BiSwitch{i}.avg + data.BiSingle{i}.avg) / 3; % average across stay/switch/single
+end
+[Main_Context] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Art{:}, timelock_Bi{:});
+    
+length(find(Main_Context.mask))
+    
+% MAIN EFFECT of ttype (collapsed across nat-art-bi)
+fprintf('\n= Main effect of ttype (F test) =\n');
+timelock_Stay = data.NatStay;
+timelock_Switch = data.NatSwitch;
+timelock_Single = data.NatSingle;
+for i = 1:numSubjects
+    timelock_Stay{i}.avg = (data.NatStay{i}.avg + data.ArtStay{i}.avg + data.BiStay{i}.avg) / 3; % average across nat/art/bi
+    timelock_Switch{i}.avg = (data.NatSwitch{i}.avg + data.ArtSwitch{i}.avg + data.BiSwitch{i}.avg) / 3; 
+    timelock_Single{i}.avg = (data.NatSingle{i}.avg + data.ArtSingle{i}.avg + data.BiSingle{i}.avg) / 3;
+end
+[Main_Ttype] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:}, timelock_Switch{:});
+    
+length(find(Main_Ttype.mask))
+
+% Alternatively,
+% we can test "switch effect" & "mixing effect" separately (no need to correct for 2 comparisons)
+cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
+cfg.design = within_design_1x2;
+% make sure we are using 2-tailed for t-test (using 1-tailed is generally frowned upon)
+cfg.tail = 0; % -1 = left, 1 = right, 0 = 2-tailed
+cfg.clustertail = 0; 
 cfg.correcttail = 'prob'; % correct for 2-tailedness
 
-% Switch cost in each context
-[Nat_sw] = ft_timelockstatistics(cfg, data.NatStay{:}, data.NatSwitch{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
-[Art_sw] = ft_timelockstatistics(cfg, data.ArtStay{:}, data.ArtSwitch{:});
-[Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
+fprintf('\nMain effect of switch:\n');
+[Switch] = ft_timelockstatistics(cfg, timelock_Stay{:}, timelock_Switch{:});
+fprintf('\nMain effect of mix:\n');
+[Mix] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:});
 
-% Mixing cost in each context
-[Nat_mix] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:});
-[Art_mix] = ft_timelockstatistics(cfg, data.ArtSingle{:}, data.ArtStay{:});
-[Bi_mix] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
+length(find(Switch.mask))             % not sig
+length(find(Mix.mask))                % sig (did not survive Bonferroni at minnbchan = 3; survived at minnbchan = 2)
 
-length(find(Nat_sw.mask))  % not sig
-length(find(Art_sw.mask))  % sig!
-length(find(Bi_sw.mask))   % not sig
-length(find(Nat_mix.mask)) % sig!
-length(find(Art_mix.mask)) % sig (but did not survive Bonferroni)
-length(find(Bi_mix.mask))  % sig (but did not survive Bonferroni)
+save([ResultsFolder_thisrun 'stats_MainEffects_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Main_Context', 'Main_Ttype', 'Switch', 'Mix');
 
-%save([ResultsFolder_thisrun 'stats_pairwise_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Nat_sw', 'Art_sw', 'Bi_sw', 'Nat_mix', 'Art_mix', 'Bi_mix');
+%% UNPACKING main effects & interactions
+% We now use avgovertime to unpack main effects & interactions,
+% so the code below is no longer relevant.
 
-%%
-% INTERACTIONS
-% sw$ interaction
-cfg.minnbchan = 3;
+%{
+cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
+cfg.design = within_design_1x2;
+% make sure we are using 2-tailed for t-test (using 1-tailed is generally frowned upon)
+cfg.tail = 0; % -1 = left, 1 = right, 0 = 2-tailed
+cfg.clustertail = 0; 
+cfg.correcttail = 'prob'; % correct for 2-tailedness
+
+% TO UNPACK THE INTERACTIONS, we compare the sw$ & mix$ for each pair of contexts (i.e. 3 t-tests)
+% unpack sw$ interaction
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.BiStay, data.BiSwitch);
 [SwCost_nat_vs_bi] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:});
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtStay, data.ArtSwitch, data.BiStay, data.BiSwitch);
@@ -294,8 +345,7 @@ length(find(SwCost_nat_vs_bi.mask))  % not sig
 length(find(SwCost_art_vs_bi.mask))  % not sig
 length(find(SwCost_nat_vs_art.mask)) % not sig
 
-% mix$ interaction (nat-vs-bi)
-cfg.minnbchan = 3;
+% unpack mix$ interaction
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.BiSingle, data.BiStay);
 [MixCost_nat_vs_bi] = ft_timelockstatistics(cfg, timelock1{:}, timelock2{:}); 
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtSingle, data.ArtStay, data.BiSingle, data.BiStay);
@@ -307,11 +357,11 @@ length(find(MixCost_nat_vs_bi.mask)) % sig (but did not survive Bonferroni)
 length(find(MixCost_art_vs_bi.mask)) % not sig
 length(find(MixCost_nat_vs_art.mask)) % not sig
 
-%save([ResultsFolder_thisrun 'stats_2x2interactions_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'SwCost_nat_vs_bi', 'SwCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_bi', 'MixCost_art_vs_bi', 'MixCost_nat_vs_art');
+save([ResultsFolder_thisrun 'stats_Interactions_unpack_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'SwCost_nat_vs_bi', 'SwCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_bi', 'MixCost_art_vs_bi', 'MixCost_nat_vs_art');
 
-%% MAIN EFFECTS
-% main effect of context (collapsed across stay-switch-single)
-fprintf('\nMain effect of context (3 comparisons):');
+
+% TO UNPACK THE MAIN EFFECT of context
+fprintf('\nMain effect of context - unpacking (3 t-tests):');
 timelock_Nat = data.NatStay;
 timelock_Art = data.ArtStay;
 timelock_Bi = data.BiStay;
@@ -328,46 +378,48 @@ fprintf('\n  -> Art vs Bi');
 fprintf('\n  -> Nat vs Art');
 [Context_nat_vs_art] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Art{:});
 
-% main effect of ttype (collapsed across nat-art-bi)
-% We will test "switch effect" & "mixing effect" separately (no need to correct for 2 comparisons)
-timelock_Stay = data.NatStay;
-timelock_Switch = data.NatSwitch;
-timelock_Single = data.NatSingle;
-for i = 1:numSubjects
-    timelock_Stay{i}.avg = (data.NatStay{i}.avg + data.ArtStay{i}.avg + data.BiStay{i}.avg) / 3; % average across nat/art/bi
-    timelock_Switch{i}.avg = (data.NatSwitch{i}.avg + data.ArtSwitch{i}.avg + data.BiSwitch{i}.avg) / 3; 
-    timelock_Single{i}.avg = (data.NatSingle{i}.avg + data.ArtSingle{i}.avg + data.BiSingle{i}.avg) / 3;
-end
-%cfg.latency = latency_cue; % time interval over which the experimental 
-fprintf('\nMain effect of switch:\n');
-[Switch] = ft_timelockstatistics(cfg, timelock_Stay{:}, timelock_Switch{:});
-fprintf('\nMain effect of mix:\n');
-[Mix] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:});
-
 length(find(Context_nat_vs_bi.mask))  % sig (but did not survive Bonferroni)
 length(find(Context_art_vs_bi.mask))  % not sig
 length(find(Context_nat_vs_art.mask)) % not sig
-length(find(Switch.mask))             % not sig
-length(find(Mix.mask))                % sig (did not survive Bonferroni at minnbchan = 3; survived at minnbchan = 2)
 
-%save([ResultsFolder_thisrun 'stats_MainEffects_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Context_nat_vs_bi', 'Context_art_vs_bi', 'Context_nat_vs_art', 'Switch', 'Mix');
+save([ResultsFolder_thisrun 'stats_MainEffects_unpack_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Context_nat_vs_bi', 'Context_art_vs_bi', 'Context_nat_vs_art', 'Switch', 'Mix');
+%}
+
+%% PLANNED PAIRWISE COMPARISONS within each context 
+% (previously known as "SANITY CHECK")
+fprintf('\n\n= Planned pairwise comparisons to assess sw$ & mix$ within each context\n');
+    
+% Make sure we are using 2-tailed t-tests:
+cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
+cfg.design = within_design_1x2;
+cfg.tail = 0;
+cfg.clustertail = 0; % 2 tailed test
+cfg.correcttail = 'prob'; % correct for 2-tailedness
+
+% Switch cost in each context
+[Nat_sw] = ft_timelockstatistics(cfg, data.NatStay{:}, data.NatSwitch{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
+[Art_sw] = ft_timelockstatistics(cfg, data.ArtStay{:}, data.ArtSwitch{:});
+[Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
+
+% Mixing cost in each context
+[Nat_mix] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:});
+[Art_mix] = ft_timelockstatistics(cfg, data.ArtSingle{:}, data.ArtStay{:});
+[Bi_mix] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
+
+length(find(Nat_sw.mask))  % not sig
+length(find(Art_sw.mask))  % sig (but did not survive Bonferroni)
+length(find(Bi_sw.mask))   % not sig
+length(find(Nat_mix.mask)) % sig (but did not survive Bonferroni)
+length(find(Art_mix.mask)) % not sig
+length(find(Bi_mix.mask))  % sig (but did not survive Bonferroni)
+
+save([ResultsFolder_thisrun 'stats_pairwise_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Nat_sw', 'Art_sw', 'Bi_sw', 'Nat_mix', 'Art_mix', 'Bi_mix');
 
 
 %% Below are from MEG Exp 1
 % Interaction (i.e. calc sw$ in each lang, then test the 2 sw$)
 % http://www.fieldtriptoolbox.org/faq/how_can_i_test_an_interaction_effect_using_cluster-based_permutation_tests
 %{
-for i = 1:numSubjects
-    allSubj_cue_ch_switchCost{i} = allSubjects_erf.cuechstay{i}; % difference btwn chstay & chswitch (calc'd on next line)
-    allSubj_cue_ch_switchCost{i}.avg = allSubjects_erf.cuechswitch{i}.avg - allSubjects_erf.cuechstay{i}.avg; % chswitch - chstay
-    allSubj_cue_en_switchCost{i} = allSubjects_erf.cueenstay{i};
-    allSubj_cue_en_switchCost{i}.avg = allSubjects_erf.cueenswitch{i}.avg - allSubjects_erf.cueenstay{i}.avg; % enswitch - enstay
-    allSubj_target_ch_switchCost{i} = allSubjects_erf.targetchstay{i};
-    allSubj_target_ch_switchCost{i}.avg = allSubjects_erf.targetchswitch{i}.avg - allSubjects_erf.targetchstay{i}.avg; % chswitch - chstay
-    allSubj_target_en_switchCost{i} = allSubjects_erf.targetenstay{i};
-    allSubj_target_en_switchCost{i}.avg = allSubjects_erf.targetenswitch{i}.avg - allSubjects_erf.targetenstay{i}.avg; % enswitch - enstay
-end
-%}
 % manual calculation above is now replaced by combine_conds_for_T_Test()
 fprintf('\nCUE window -> Testing lang x ttype interaction:\n');
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.cuechstay, data.cuechswitch, data.cueenstay, data.cueenswitch);
@@ -431,11 +483,12 @@ effect_target_lang = length(find(target_lang.mask))
 effect_target_ttype = length(find(target_ttype.mask))
 
 %save([ResultsFolder_thisrun 'stats.mat'], 'cue_interaction', 'cue_lang', 'cue_ttype', 'target_interaction', 'target_lang', 'target_ttype');
+%}
 
 
 %% Plotting: use ft_clusterplot & ft_topoplot
 
-load([ResultsFolder_thisrun 'stats.mat']);
+%load([ResultsFolder_thisrun 'stats.mat']);
 load('lay.mat');
 load([ResultsFolder_thisrun 'GA_avg.mat']); % only required if using ft_topoplot
 
@@ -444,7 +497,7 @@ ft_hastoolbox('brewermap', 1); % ensure this toolbox is on the path
 cmap = colormap(flipud(brewermap(64, 'RdBu')));
 
 % select which comparison to plot
-stat = target_lang; % here we plot the only effect that seems to survive correction (at minnbchan = 0)
+stat = MixCost_interaction; % here we plot the only effect that seems to survive correction (at minnbchan = 0)
                   % to explore where (both in terms of time & location) the effect might have possibly
                   % occurred
                   % [TODO] then we can define more precise time window &
@@ -567,44 +620,66 @@ end
 %}
 
 %% To plot the actual effect (i.e. average ERF of sig channels)
-% alt: go to the multiplotER generated earlier, manually select the sig channels & plot
 
-stat = cue_ttype; % can set this to any effect, it's just for reading out the channel labels
+% SELECT which stat to plot & SPECIFY the relevant conds accordingly
+stat = MixCost_interaction;
+conds_to_plot = [1 3 4 6 7 9];
 
-% effect in cue window
-cfg        = [];
-cfg.channel = stat.label(find(cue_ttype.mask)); % autoly retrieve sig channels (only works with cfg.avgovertime = 'yes')
-%{'AG017', 'AG018', 'AG019', 'AG022', 'AG023', 'AG025', 'AG029', 'AG063', 'AG064', 'AG143'}; % 10 sig channels in cluster
-
-figure('Name','Average ERF of significant channels - cue window');
-ft_singleplotER(cfg, GA_erf.cuechstay, GA_erf.cuechswitch, GA_erf.cueenstay, GA_erf.cueenswitch);
-legend(eventnames_real(conds_cue));
-xlim([-0.1 0.75]);
-
-% if doing avgovertime, plot vertical lines to indicate the time window
-if exist('latency_cue', 'var')
-    line([latency_cue(1) latency_cue(1)], ylim, 'Color','black'); % plot a vertical line at start_time
-    line([latency_cue(end) latency_cue(end)], ylim, 'Color','black'); % plot a vertical line at end_time
+% if GA hasn't been loaded, then load it now
+% (check first to avoid reloading, as it takes a long time)
+if ~exist('GA_erf', 'var')
+    load([ResultsFolder_thisrun 'GA_avg.mat']); % only required if using ft_topoplot
 end
 
+% read out the sig channels & time points
+[row,col] = find(stat.mask);
+sig_chans = unique(row)';
+sig_samples = unique(col)';
+start_time = stat.time(sig_samples(1));
+end_time = stat.time(sig_samples(end));
 
-% effect in target window
+% plot the average ERF over all sig channels
+figure('Name', 'Mix$ Interaction (avg ERF of sig channels)');
 cfg        = [];
-cfg.channel = stat.label(find(target_ttype.mask)); % autoly retrieve sig channels (only works with cfg.avgovertime = 'yes')
-
-figure('Name','Average ERF of significant channels - target window');
-ft_singleplotER(cfg, GA_erf.targetchstay, GA_erf.targetchswitch, GA_erf.targetenstay, GA_erf.targetenswitch);
-legend(eventnames_real(conds_target));
-xlim([-0.1 0.75]);
-
-% if doing avgovertime, plot vertical lines to indicate the time window
-if exist('latency_target', 'var')
-    line([latency_target(1) latency_target(1)], ylim, 'Color','black'); % plot a vertical line at start_time
-    line([latency_target(end) latency_target(end)], ylim, 'Color','black'); % plot a vertical line at end_time
+cfg.channel = stat.label(sig_chans);
+cfg.baseline     = ERF_BASELINE; % makes no diff if we've already done baseline correction earlier
+cfg.graphcolor   = cell2mat(colours(conds_to_plot)); 
+cfg.linestyle    = lineTypes(conds_to_plot);
+cfg.linewidth = 3;
+ft_singleplotER(cfg, GA_erf.NatStay, GA_erf.NatSingle, GA_erf.ArtStay, GA_erf.ArtSingle, GA_erf.BiStay, GA_erf.BiSingle);
+legend(eventnames_real(conds_to_plot), 'Location','northwest', 'FontSize',30);
+xlim(PLOT_XLIM);
+%{
+% if we want to plot the GFP of these channels, calculate that now
+cfg        = [];
+cfg.method = 'power';
+cfg.channel = stat.label(sig_chans);
+for j = 1:length(eventnames_real)
+    GFP_Interaction.(eventnames_real{j}) = ft_globalmeanfield(cfg, GA_erf.(eventnames_real{j}));
 end
+% plot GFP
+figure('Name', 'Mix$ Interaction (GFP of sig channels)'); hold on
+cfg        = [];
+cfg.graphcolor   = cell2mat(colours(conds_to_plot)); 
+cfg.linestyle    = lineTypes(conds_to_plot);
+cfg.linewidth = 3;
+ft_singleplotER(cfg, GFP_Interaction.NatStay, GFP_Interaction.NatSingle, GFP_Interaction.ArtStay, GFP_Interaction.ArtSingle, GFP_Interaction.BiStay, GFP_Interaction.BiSingle);
+legend(eventnames_real(conds_to_plot), 'Location','northwest', 'FontSize',30);
+xlim(PLOT_XLIM);
+%}
+% create shaded region indicating effect duration
+ylimits = ylim; ylow = ylimits(1); yhigh = ylimits(2);
+x = [start_time end_time end_time start_time]; % specify x,y coordinates of the 4 corners
+y = [ylow ylow yhigh yhigh];
+% use alpha to set transparency 
+alpha = 0.3;
+patch(x,y,'black', 'FaceAlpha',alpha, 'HandleVisibility','off') % draw the shade 
+    % (turn off HandleVisibility so it won't show up in the legends)
+ylim(ylimits); % ensure ylim doesn't get expanded
 
 
-% Ref code: copied directly from FT_compare_conditions.m
+
+%% Ref code: copied directly from FT_compare_conditions.m
 % see also: http://www.fieldtriptoolbox.org/tutorial/cluster_permutation_timelock#the_format_of_the_output
 %{
 
