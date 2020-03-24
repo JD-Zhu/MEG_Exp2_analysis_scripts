@@ -62,5 +62,5 @@ end
 %% save to csv file
 start_time = allSubjects_erf.NatStay{1}.time(start_sample) * 1000;
 end_time   = allSubjects_erf.NatStay{1}.time(end_sample) * 1000;
-output_file = [ResultsFolder_thisrun 'avgovertime\\' stat_name '_' int2str(start_time) '-' int2str(end_time) 'ms.csv'];
+output_file = [ResultsFolder_thisrun 'STATS_axial\\avgovertime\\' stat_name '_' int2str(start_time) '-' int2str(end_time) 'ms.csv'];
 writetable(T, output_file);

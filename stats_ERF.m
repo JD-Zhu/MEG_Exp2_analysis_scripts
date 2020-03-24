@@ -60,6 +60,9 @@ allSubjects_erf.BiSingle = {};
 
 %% Read data
 
+% The output have now been saved ("ERF_allSubjects.mat"), so no need to run this section again.
+% Data will be loaded in relevant sections.
+
 % find all .mat files in ResultsFolder_thisrun
 files = dir([ResultsFolder_thisrun '*_erf' filename_suffix '.mat']);
 
