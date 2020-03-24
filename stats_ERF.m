@@ -15,6 +15,13 @@ close all;
 % = Settings =
 % Please adjust as required:
 
+% SELECT which set of single-subject ERFs to use
+run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
+
+% Apply planar transformation before running stats?
+% (this will make everything +ve, therefore avoiding the sign-flipping issue)
+PLANAR_TRANSFORM = false;
+
 % perform channel repair on each subject's ERF?
 CHANNEL_REPAIR = false; % only need to do the repair once, we'll save repaired erf in the folder below
 repaired_erf_folder = 'channelrepaired\\'; % need to create this folder first
@@ -23,9 +30,6 @@ repaired_erf_folder = 'channelrepaired\\'; % need to create this folder first
 AVGOVERTIME = false;
 %TIME_WINDOW_TO_AVG = [0.060 0.110]; % must set this var, if AVGOVERTIME is set to true
 
-
-% SELECT which set of single-subject ERFs to use
-run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
 
 
 
@@ -115,7 +119,7 @@ if (exist(GA_output_file, 'file') ~= 2)
     save(GA_output_file, 'GA_indi');
 end
 
-% multiplot
+%% multiplot
 load('lay.mat');
         
 cfg              = [];
@@ -171,21 +175,68 @@ plot(averageAcrossConds.time, averageAcrossConds.avg);
 xlim([-0.2 0.8]);
 
 
+%% Apply planar transformation before running stats?
+% (this will make everything +ve, therefore avoiding the sign-flipping issue)
+
+% The output (ie. planar ERFs) have now been saved, so no need to run this again
+%{
+if (PLANAR_TRANSFORM)
+    
+    load('neighbours.mat');
+    
+    counter = 0; % just to check the correct # of ERFs are processed
+
+    cond_names = fieldnames(allSubjects_erf);
+    for j = 1:length(cond_names) % each cycle handles one cond (e.g. NatStay)
+        cond_name = cond_names{j};
+
+        for i = 1:length(allSubjects_erf.(cond_name)) % each cycle handles one subject
+            % Compute the planar gradient at each sensor location
+            % in both the horizontal and the vertical direction 
+            cfg                 = [];
+            cfg.feedback        = 'no';
+            cfg.method          = 'template';
+            cfg.planarmethod    = 'sincos';
+            cfg.neighbours      = neighbours;
+
+            planar = ft_megplanar(cfg, allSubjects_erf.(cond_name){i});
+
+            % Combine the horizontal and vertical components 
+            % of the planar gradient using Pythagoras' Rule
+            allSubjects_erf.(cond_name){i} = ft_combineplanar([], planar);
+
+            counter = counter + 1;
+        end
+    end
+    
+    fprintf(['\nPlanar transformed ' int2str(counter) ' ERFs (should be 9*24=216).\n']);
+end
+%}
+
 %% Statistical analysis
 
-data = allSubjects_erf; % make an easy name
+% load the data
+if (PLANAR_TRANSFORM)
+    load([ResultsFolder_thisrun 'ERF_allSubjects_planar.mat']); 
+else
+    load([ResultsFolder_thisrun 'ERF_allSubjects.mat']);
+end
+
+data = allSubjects_erf; % change to an easy name
+clear allSubjects_erf; % clear up the memory
 
 % Optional: select which subjects to (not) use
 for j = 1:length(eventnames_real)
     %data.(eventnames_real{j})([1 11 16 19 20 21 14]) = [];
 end
 
+load('neighbours.mat'); % this is the same for all subjects (even same across experiments). So just prepare once & save, then load here
 
+%%
 fprintf('\n= STATS: CLUSTER-BASED PERMUTATION TESTS =\n');
 
 cfg = [];
 cfg.channel   = {'all', '-AG101', '-AG122', '-AG007', '-AG103'}; % remove noisy sensors (see above)
-load('neighbours.mat'); % this is the sensor layout - it's the same for all subjects (even same across experiments). So just prepare once & save, then load here
 cfg.neighbours = neighbours;  % same as defined for the between-trials experiment
 
 % can choose diff time windows to analyse for cue epochs & target epochs
@@ -253,7 +304,10 @@ cfg.clustertail = 1; % for F test, can only select right-sided tail
                      % https://github.com/fieldtrip/fieldtrip/blob/master/statfun/ft_statfun_depsamplesFunivariate.m
 
 % INTERACTIONS
-cfg.minnbchan = 2;
+cfg.minnbchan = 3; % from my experience so far, generally 2~4 finds the
+                   % same cluster (2 has the widest temporal span & largest
+                   % number of channels in the cluster, while 4 is on the 
+                   % other end). At 5, no clusters are found.
 
 % sw$ interaction (i.e. calc sw$ in each context, then submit the 3 sw$ to F-test)
 fprintf('\n= Sw$ interaction (i.e. compare sw$ in 3 contexts using an F test) =\n');
@@ -270,7 +324,7 @@ fprintf('\n= Mix$ interaction (i.e. compare mix$ in 3 contexts using an F test) 
 length(find(SwCost_interaction.mask))
 length(find(MixCost_interaction.mask))
 
-save([ResultsFolder_thisrun 'stats_Interactions_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'SwCost_interaction', 'MixCost_interaction');
+%save([ResultsFolder_thisrun 'stats_Interactions_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'SwCost_interaction', 'MixCost_interaction');
 
 
 % MAIN EFFECT of context (collapsed across single-stay-switch)
@@ -318,7 +372,7 @@ fprintf('\nMain effect of mix:\n');
 length(find(Switch.mask))             % not sig
 length(find(Mix.mask))                % sig (did not survive Bonferroni at minnbchan = 3; survived at minnbchan = 2)
 
-save([ResultsFolder_thisrun 'stats_MainEffects_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Main_Context', 'Main_Ttype', 'Switch', 'Mix');
+%save([ResultsFolder_thisrun 'stats_MainEffects_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Main_Context', 'Main_Ttype', 'Switch', 'Mix');
 
 %% UNPACKING main effects & interactions
 % We now use avgovertime to unpack main effects & interactions,
@@ -413,7 +467,7 @@ length(find(Nat_mix.mask)) % sig (but did not survive Bonferroni)
 length(find(Art_mix.mask)) % not sig
 length(find(Bi_mix.mask))  % sig (but did not survive Bonferroni)
 
-save([ResultsFolder_thisrun 'stats_pairwise_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Nat_sw', 'Art_sw', 'Bi_sw', 'Nat_mix', 'Art_mix', 'Bi_mix');
+%save([ResultsFolder_thisrun 'stats_pairwise_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Nat_sw', 'Art_sw', 'Bi_sw', 'Nat_mix', 'Art_mix', 'Bi_mix');
 
 
 %% Below are from MEG Exp 1
@@ -622,12 +676,15 @@ end
 %% To plot the actual effect (i.e. average ERF of sig channels)
 
 % SELECT which stat to plot & SPECIFY the relevant conds accordingly
-stat = MixCost_interaction;
-conds_to_plot = [1 3 4 6 7 9];
+%stat = MixCost_interaction;
+%conds_to_plot = [1 3 4 6 7 9];
+stat = Main_Context;
+conds_to_plot = 1:9;%[1 2 4 5 7 8];
 
-% if GA hasn't been loaded, then load it now
-% (check first to avoid reloading, as it takes a long time)
-if ~exist('GA_erf', 'var')
+% load the relevant GA
+if (PLANAR_TRANSFORM)
+    load([ResultsFolder_thisrun 'GA_avg_planar.mat']); % only required if using ft_topoplot
+else
     load([ResultsFolder_thisrun 'GA_avg.mat']); % only required if using ft_topoplot
 end
 
@@ -639,34 +696,18 @@ start_time = stat.time(sig_samples(1));
 end_time = stat.time(sig_samples(end));
 
 % plot the average ERF over all sig channels
-figure('Name', 'Mix$ Interaction (avg ERF of sig channels)');
+figure('Name', 'Avg ERF of sig channels');
 cfg        = [];
 cfg.channel = stat.label(sig_chans);
-cfg.baseline     = ERF_BASELINE; % makes no diff if we've already done baseline correction earlier
+%cfg.baseline     = ERF_BASELINE; % makes no diff if we've already done baseline correction earlier
 cfg.graphcolor   = cell2mat(colours(conds_to_plot)); 
 cfg.linestyle    = lineTypes(conds_to_plot);
 cfg.linewidth = 3;
-ft_singleplotER(cfg, GA_erf.NatStay, GA_erf.NatSingle, GA_erf.ArtStay, GA_erf.ArtSingle, GA_erf.BiStay, GA_erf.BiSingle);
+cellarray = struct2cell(GA_erf);
+ft_singleplotER(cfg, cellarray{conds_to_plot});
 legend(eventnames_real(conds_to_plot), 'Location','northwest', 'FontSize',30);
 xlim(PLOT_XLIM);
-%{
-% if we want to plot the GFP of these channels, calculate that now
-cfg        = [];
-cfg.method = 'power';
-cfg.channel = stat.label(sig_chans);
-for j = 1:length(eventnames_real)
-    GFP_Interaction.(eventnames_real{j}) = ft_globalmeanfield(cfg, GA_erf.(eventnames_real{j}));
-end
-% plot GFP
-figure('Name', 'Mix$ Interaction (GFP of sig channels)'); hold on
-cfg        = [];
-cfg.graphcolor   = cell2mat(colours(conds_to_plot)); 
-cfg.linestyle    = lineTypes(conds_to_plot);
-cfg.linewidth = 3;
-ft_singleplotER(cfg, GFP_Interaction.NatStay, GFP_Interaction.NatSingle, GFP_Interaction.ArtStay, GFP_Interaction.ArtSingle, GFP_Interaction.BiStay, GFP_Interaction.BiSingle);
-legend(eventnames_real(conds_to_plot), 'Location','northwest', 'FontSize',30);
-xlim(PLOT_XLIM);
-%}
+
 % create shaded region indicating effect duration
 ylimits = ylim; ylow = ylimits(1); yhigh = ylimits(2);
 x = [start_time end_time end_time start_time]; % specify x,y coordinates of the 4 corners
@@ -677,6 +718,36 @@ patch(x,y,'black', 'FaceAlpha',alpha, 'HandleVisibility','off') % draw the shade
     % (turn off HandleVisibility so it won't show up in the legends)
 ylim(ylimits); % ensure ylim doesn't get expanded
 
+% only plot the GFP if using axial ERF (in the case of planar transformation,
+% the entire timecourse is already +ve, so no need of GFP)
+if ~PLANAR_TRANSFORM
+    % if we want to plot the GFP of these channels, calculate that now
+    cfg        = [];
+    cfg.method = 'power';
+    cfg.channel = stat.label(sig_chans);
+    for j = 1:length(eventnames_real)
+        GFP_Interaction.(eventnames_real{j}) = ft_globalmeanfield(cfg, GA_erf.(eventnames_real{j}));
+    end
+    % plot GFP
+    figure('Name', 'GFP of sig channels'); hold on
+    cfg        = [];
+    cfg.graphcolor   = cell2mat(colours(conds_to_plot)); 
+    cfg.linestyle    = lineTypes(conds_to_plot);
+    cfg.linewidth = 3;
+    ft_singleplotER(cfg, GFP_Interaction.NatStay, GFP_Interaction.NatSingle, GFP_Interaction.ArtStay, GFP_Interaction.ArtSingle, GFP_Interaction.BiStay, GFP_Interaction.BiSingle);
+    legend(eventnames_real(conds_to_plot), 'Location','northwest', 'FontSize',30);
+    xlim(PLOT_XLIM);
+
+    % create shaded region indicating effect duration
+    ylimits = ylim; ylow = ylimits(1); yhigh = ylimits(2);
+    x = [start_time end_time end_time start_time]; % specify x,y coordinates of the 4 corners
+    y = [ylow ylow yhigh yhigh];
+    % use alpha to set transparency 
+    alpha = 0.3;
+    patch(x,y,'black', 'FaceAlpha',alpha, 'HandleVisibility','off') % draw the shade 
+        % (turn off HandleVisibility so it won't show up in the legends)
+    ylim(ylimits); % ensure ylim doesn't get expanded
+end
 
 
 %% Ref code: copied directly from FT_compare_conditions.m

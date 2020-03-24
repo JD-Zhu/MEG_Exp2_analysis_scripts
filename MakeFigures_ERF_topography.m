@@ -31,8 +31,8 @@ ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all sub
 
 % load the results
 load([ResultsFolder_thisrun 'stats_Interactions_minnbchan2.mat']);
-load([ResultsFolder_thisrun 'lay.mat']);
-load([ResultsFolder_thisrun 'neighbours.mat']);
+load('lay.mat');
+load('neighbours.mat');
 
 % SELECT which effect to plot & SPECIFY the effect duration
 stat_output = MixCost_interaction;
@@ -142,7 +142,7 @@ cfg.method          = 'template';
 cfg.neighbours      = neighbours;
 
 cfg.planarmethod    = 'sincos';
-planar              = ft_megplanar(cfg, allSubjects_erf.NatStay{1,1}); % plug in any timelock struct
+planar              = ft_megplanar(cfg, timelock); % plug in any timelock struct
 
 % Combine the horizontal and vertical components 
 % of the planar gradient using Pythagoras' Rule
