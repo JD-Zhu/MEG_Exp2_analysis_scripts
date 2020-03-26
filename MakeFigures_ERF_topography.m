@@ -27,7 +27,7 @@ common();
 
 % SELECT which set of single-subject ERFs to use
 run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ERF" folder
-ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all subjects
+ResultsFolder_thisrun = [ResultsFolder run_name '\\STATS_axial###\\']; % ERF results for all subjects
 
 % load the results
 load([ResultsFolder_thisrun 'stats_Interactions_minnbchan2.mat']);
@@ -35,15 +35,15 @@ load('lay.mat');
 load('neighbours.mat');
 
 % SELECT which effect to plot & SPECIFY the effect duration
-stat_output = MixCost_interaction;
-start_time = 0.155;
-end_time = 0.200;
+stat_output = MixCost_interaction; % 155-200ms (minnbchan = 2); 160-180ms (minnbchan = 3); 165-170ms (minnbchan = 4);
+start_time = 0.165;
+end_time = 0.170;
 
 % load nice colourmap
 ft_hastoolbox('brewermap', 1);         % ensure this toolbox is on the path
 cmap = colormap(flipud(brewermap(64, 'RdBu')));
 
-load([ResultsFolder_thisrun 'GA_erf.mat']); % takes a long time to load
+load([ResultsFolder_thisrun 'GA_avg.mat']); % takes a long time to load
 
 
 %% plot topography for axial gradiometers
@@ -53,7 +53,7 @@ cfg.layout            = lay;
 cfg.colormap          = cmap;
 cfg.colorbar          = 'yes'; % shows the scales
 %cfg.colorbar         = 'EastOutside';
-cfg.zlim              = [-4 4];%'maxabs'; % set the scaling
+%cfg.zlim              = 'maxabs'; % set the scaling
 
 cfg.xlim = [start_time end_time]; % duration of the effect (as reported by ft_clusterplot)
                           % topography will be averaged over this interval
@@ -75,7 +75,7 @@ for i = 1:size(stat_output.mask, 1)
         sig_channels = [sig_channels i]; % so add it to the list
     end
 end
-cfg.highlightchannel  = sig_channels;
+cfg.highlightchannel  = stat_output.label(sig_channels);
 
 % Alternatively, we highlight the channels that are sig at the middle time point
 %{
@@ -85,9 +85,10 @@ time_point = time_point * 1000; % convert unit to ms
 time_index = round(time_point / 5 + 1); % index of the time point you want, round it up/down to an integer
                                         % note: this is only correct if the epoch starts from time 0;
                                         % if it starts from -100ms, then need to adjust index accordingly
-time_index = 109; % set manually if needed
-cfg.highlightchannel  = stat_output.label(ismember(stat_output.negclusterslabelmat(:,time_index),1)); % find all the channels showing '1' at that time point
 %}
+% set manually if needed
+%time_index = 56 or 57 (minnbchan = 2); 55 (minnbchan = 3); 
+%cfg.highlightchannel  = stat_output.label(ismember(stat_output.posclusterslabelmat(:,time_index),1)); % find all the channels showing '1' at that time point
 
 
 cfg.style             = 'straight'; % no contour lines, only the colour gradients
@@ -95,17 +96,17 @@ cfg.comment           = 'no';
 cfg.gridscale         = 512;
 cfg.marker            = 'off'; % show the location of all channels?
 
-cfg.parameter = 'stat'; % what field (in the stats output) to plot, e.g. selecting 'stat' will plot t-values
+cfg.parameter = 'stat'; % what field (in the stats output) to plot, e.g. selecting 'stat' will plot t-values / F-values
 
 ft_topoplotER(cfg, stat_output);
 set(gca,'fontsize',22); % set colorbar fontsize
-%title(gca, 'T-values');
+%title(gca, 'F-values');
 
 
 %% transform into planar gradient
 
 % Opt 1: plot topography based on actual erf amplitude
-%{
+
 % first, define the 2 conds to be compared:
 % here we look at main effect of lang in target window
 GA_en = GA_erf.targetenstay;
@@ -119,12 +120,11 @@ cfg.operation = 'subtract';
 cfg.parameter = 'avg';
 timelock = ft_math(cfg, GA_en, GA_ch);
 
-%}
 
-% Opt 2: plot topography based on t-values in the stat output
-% make a fake GA_erf structure, then plug in the t-values from the stat output
-%
-timelock = GA_erf.targetenstay; % copy the GA structure from anywhere
+% Opt 2: plot topography based on F-values in the stat output <- Q: is it even valid to perform planar transformation on F-values?
+%{
+% make a fake GA_erf structure, then plug in the F-values from the stat output
+timelock = GA_erf.NatStay; % copy the GA structure from anywhere
 timelock.avg = stat_output.stat; % not sure if it uses the 'avg' or 'var' field to calc planar,
 timelock.var = stat_output.stat; % so I'll just replace both
 timelock.time = stat_output.time;
@@ -149,7 +149,8 @@ planar              = ft_megplanar(cfg, timelock); % plug in any timelock struct
 planarComb = ft_combineplanar([], planar);
 
 % Plot the planar gradient
-cfg.zlim = [0 3];
+cfg = [];
+%cfg.zlim = [0 3];
 cfg.xlim = [start_time end_time]; % duration of the effect (as reported by ft_clusterplot)
                           % topography will be averaged over this interval
 cfg.layout = lay;

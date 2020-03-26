@@ -20,6 +20,8 @@ run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ER
 
 % Apply planar transformation before running stats?
 % (this will make everything +ve, therefore avoiding the sign-flipping issue)
+% But it's not necessarily more valid than the original (ie. axial) version,
+% as the more processing you do to the data, the more chance for distortion.
 PLANAR_TRANSFORM = false;
 
 % perform channel repair on each subject's ERF?
@@ -29,8 +31,6 @@ repaired_erf_folder = 'channelrepaired\\'; % need to create this folder first
 % cfg.avgovertime setting in cluster-based permutation test
 AVGOVERTIME = false;
 %TIME_WINDOW_TO_AVG = [0.060 0.110]; % must set this var, if AVGOVERTIME is set to true
-
-
 
 
 %%
@@ -43,8 +43,12 @@ global colours; global lineTypes;
 global PLOT_XLIM; global ERF_BASELINE;
 common();
 
-ResultsFolder_thisrun = [ResultsFolder run_name '\\']; % ERF results for all subjects
-
+% location of ERF results for all subjects
+if (PLANAR_TRANSFORM)
+    ResultsFolder_thisrun = [ResultsFolder run_name '\\STATS_planar\\'];
+else
+    ResultsFolder_thisrun = [ResultsFolder run_name '\\STATS_axial\\'];
+end
 
 % initialise allSubjects_erf (each field holds all subjects' erf in that condition)
 allSubjects_erf.NatStay = {};
@@ -60,8 +64,8 @@ allSubjects_erf.BiSingle = {};
 
 %% Read data
 
-% The output have now been saved ("ERF_allSubjects.mat"), so no need to run this section again.
-% Data will be loaded in relevant sections.
+% SKIP THIS SECTION - The output have now been saved ("allSubjects_erf.mat" in "STATS_axial" folder).
+% Data will be loaded in relevant sections below.
 
 % find all .mat files in ResultsFolder_thisrun
 files = dir([ResultsFolder_thisrun '*_erf' filename_suffix '.mat']);
@@ -91,6 +95,9 @@ end
 
 %% Descriptives
 % http://www.fieldtriptoolbox.org/tutorial/cluster_permutation_timelock#within-subjects_experiments
+
+% SKIP THIS SECTION - The output have now been saved ("GA_avg.mat" & "GA_individuals.mat").
+% Data will be loaded in relevant sections below.
 
 fprintf('\n= COMPUTING & PLOTTING CROSS-SUBJECT AVERAGES =\n');
 
@@ -122,7 +129,7 @@ if (exist(GA_output_file, 'file') ~= 2)
     save(GA_output_file, 'GA_indi');
 end
 
-%% multiplot
+% multiplot
 load('lay.mat');
         
 cfg              = [];
@@ -181,8 +188,9 @@ xlim([-0.2 0.8]);
 %% Apply planar transformation before running stats?
 % (this will make everything +ve, therefore avoiding the sign-flipping issue)
 
-% The output (ie. planar ERFs) have now been saved, so no need to run this again
-%{
+% SKIP THIS SECTION - The output have now been saved ("allSubjects_erf.mat" in "STATS_planar" folder).
+% Data will be loaded in relevant sections below.
+
 if (PLANAR_TRANSFORM)
     
     load('neighbours.mat');
@@ -214,32 +222,29 @@ if (PLANAR_TRANSFORM)
     
     fprintf(['\nPlanar transformed ' int2str(counter) ' ERFs (should be 9*24=216).\n']);
 end
-%}
+
 
 %% Statistical analysis
 
 % load the data
-if (PLANAR_TRANSFORM)
-    load([ResultsFolder_thisrun 'ERF_allSubjects_planar.mat']); 
-else
-    load([ResultsFolder_thisrun 'ERF_allSubjects.mat']);
-end
+load([ResultsFolder_thisrun 'allSubjects_erf.mat']); 
 
 data = allSubjects_erf; % change to an easy name
 clear allSubjects_erf; % clear up the memory
+
 
 % Optional: select which subjects to (not) use
 for j = 1:length(eventnames_real)
     %data.(eventnames_real{j})([1 11 16 19 20 21 14]) = [];
 end
 
-load('neighbours.mat'); % this is the same for all subjects (even same across experiments). So just prepare once & save, then load here
 
 %%
 fprintf('\n= STATS: CLUSTER-BASED PERMUTATION TESTS =\n');
 
 cfg = [];
 cfg.channel   = {'all', '-AG101', '-AG122', '-AG007', '-AG103'}; % remove noisy sensors (see above)
+load('neighbours.mat'); % this is the same for all subjects (even same across experiments). So just prepare once & save, then load here
 cfg.neighbours = neighbours;  % same as defined for the between-trials experiment
 
 % can choose diff time windows to analyse for cue epochs & target epochs
@@ -259,7 +264,7 @@ cfg.method = 'montecarlo';
 cfg.correctm = 'cluster'; %'no'; % it is common in MEG studies to run uncorrected at cfg.alpha = 0.001
 cfg.clusteralpha = 0.05; % threshold for selecting candidate samples to form clusters
 cfg.clusterstatistic = 'maxsum';
-cfg.minnbchan = 3; % minimum number of neighbourhood channels required to be significant 
+cfg.minnbchan = 2; % minimum number of neighbourhood channels required to be significant 
                    % in order to form a cluster 
                    % (default: 0, ie. each single channel can be considered a cluster).
                    % 4 or 5 is a good choice; 2 is too few coz it's even below
@@ -267,7 +272,7 @@ cfg.minnbchan = 3; % minimum number of neighbourhood channels required to be sig
                    % really be measuring the same thing, so ofc they are both sig)
 
 cfg.alpha = 0.05; %0.001  % threshold for cluster-level statistics (any cluster with a p-value lower than this will be reported as sig - an entry of '1' in .mask field)
-cfg.numrandomization = 500; % Rule of thumb: use 500, and double this number if it turns out 
+cfg.numrandomization = 2000; % Rule of thumb: use 500, and double this number if it turns out 
     % that the p-value differs from the chosen alpha (e.g. 0.05) by less than 0.02
 
 numSubjects = length(data.(eventnames_real{1})); % check how many subjects we are including
@@ -307,7 +312,7 @@ cfg.clustertail = 1; % for F test, can only select right-sided tail
                      % https://github.com/fieldtrip/fieldtrip/blob/master/statfun/ft_statfun_depsamplesFunivariate.m
 
 % INTERACTIONS
-cfg.minnbchan = 3; % from my experience so far, generally 2~4 finds the
+cfg.minnbchan = 2; % from my experience so far, generally 2~4 finds the
                    % same cluster (2 has the widest temporal span & largest
                    % number of channels in the cluster, while 4 is on the 
                    % other end). At 5, no clusters are found.
@@ -367,9 +372,9 @@ cfg.tail = 0; % -1 = left, 1 = right, 0 = 2-tailed
 cfg.clustertail = 0; 
 cfg.correcttail = 'prob'; % correct for 2-tailedness
 
-fprintf('\nMain effect of switch:\n');
+fprintf('\nMain effect of switch: (t-test)\n');
 [Switch] = ft_timelockstatistics(cfg, timelock_Stay{:}, timelock_Switch{:});
-fprintf('\nMain effect of mix:\n');
+fprintf('\nMain effect of mix: (t-test)\n');
 [Mix] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:});
 
 length(find(Switch.mask))             % not sig
@@ -377,11 +382,40 @@ length(find(Mix.mask))                % sig (did not survive Bonferroni at minnb
 
 %save([ResultsFolder_thisrun 'stats_MainEffects_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Main_Context', 'Main_Ttype', 'Switch', 'Mix');
 
-%% UNPACKING main effects & interactions
-% We now use avgovertime to unpack main effects & interactions,
-% so the code below is no longer relevant.
 
-%{
+%% PLANNED PAIRWISE COMPARISONS within each context 
+% (previously known as "SANITY CHECK")
+fprintf('\n\n= Planned pairwise comparisons to assess sw$ & mix$ within each context\n');
+    
+% Make sure we are using 2-tailed t-tests:
+cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
+cfg.design = within_design_1x2;
+cfg.tail = 0;
+cfg.clustertail = 0; % 2 tailed test
+cfg.correcttail = 'prob'; % correct for 2-tailedness
+
+% Switch cost in each context
+[Nat_sw] = ft_timelockstatistics(cfg, data.NatStay{:}, data.NatSwitch{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
+[Art_sw] = ft_timelockstatistics(cfg, data.ArtStay{:}, data.ArtSwitch{:});
+[Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
+
+% Mixing cost in each context
+[Nat_mix] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:});
+[Art_mix] = ft_timelockstatistics(cfg, data.ArtSingle{:}, data.ArtStay{:});
+[Bi_mix] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
+
+length(find(Nat_sw.mask))  % not sig
+length(find(Art_sw.mask))  % sig (but did not survive Bonferroni)
+length(find(Bi_sw.mask))   % not sig
+length(find(Nat_mix.mask)) % sig (but did not survive Bonferroni)
+length(find(Art_mix.mask)) % not sig
+length(find(Bi_mix.mask))  % sig (but did not survive Bonferroni)
+
+%save([ResultsFolder_thisrun 'stats_pairwise_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Nat_sw', 'Art_sw', 'Bi_sw', 'Nat_mix', 'Art_mix', 'Bi_mix');
+
+
+%% UNPACKING main effects & interactions
+
 cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
 cfg.design = within_design_1x2;
 % make sure we are using 2-tailed for t-test (using 1-tailed is generally frowned upon)
@@ -389,6 +423,41 @@ cfg.tail = 0; % -1 = left, 1 = right, 0 = 2-tailed
 cfg.clustertail = 0; 
 cfg.correcttail = 'prob'; % correct for 2-tailedness
 
+
+% Unpack mix$ interaction
+stat = MixCost_interaction;
+
+% run relevant code (should have been run during F-test above) to compute these:
+% timelock_MixCost_Nat, timelock_MixCost_Art, timelock_MixCost_Bi
+[timelock_MixCost_Nat, timelock_MixCost_Bi] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.BiSingle, data.BiStay);
+[timelock_MixCost_Art, ~] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtSingle, data.ArtStay, data.BiSingle, data.BiStay);
+
+% read out the sensors in the cluster
+[row,col] = find(stat.mask); 
+sig_chans = unique(row)';
+
+% Take plain avg over all sig sensors
+cfg.channel = stat.label(sig_chans);
+cfg.avgoverchan = 'yes'; 
+cfg.minnbchan = 0;      % if avgoverchan = 'yes', then set this to 0, otherwise you cannot 
+                        % possibly form a cluster (because there is only one "channel")
+% Also avg over time
+cfg.latency = [0.155 0.200]; % duration of the cluster
+cfg.avgovertime = 'yes';
+
+[MixCost_nat_vs_bi] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Bi{:});
+[MixCost_art_vs_bi] = ft_timelockstatistics(cfg, timelock_MixCost_Art{:}, timelock_MixCost_Bi{:});
+[MixCost_nat_vs_art] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Art{:});
+
+length(find(MixCost_nat_vs_bi.mask))
+length(find(MixCost_art_vs_bi.mask))
+length(find(MixCost_nat_vs_art.mask))
+
+%save([ResultsFolder_thisrun 'stats_Interactions_minnbchan' mat2str(cfg.minnbchan) '_unpack_avgovertime.mat'], 'MixCost_nat_vs_bi', 'MixCost_art_vs_bi', 'MixCost_nat_vs_art');
+
+% We now use avgovertime/avgoverchan to unpack main effects & interactions,
+% so the code below is obsolete.
+%{
 % TO UNPACK THE INTERACTIONS, we compare the sw$ & mix$ for each pair of contexts (i.e. 3 t-tests)
 % unpack sw$ interaction
 [timelock1, timelock2] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatStay, data.NatSwitch, data.BiStay, data.BiSwitch);
@@ -441,36 +510,6 @@ length(find(Context_nat_vs_art.mask)) % not sig
 
 save([ResultsFolder_thisrun 'stats_MainEffects_unpack_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Context_nat_vs_bi', 'Context_art_vs_bi', 'Context_nat_vs_art', 'Switch', 'Mix');
 %}
-
-%% PLANNED PAIRWISE COMPARISONS within each context 
-% (previously known as "SANITY CHECK")
-fprintf('\n\n= Planned pairwise comparisons to assess sw$ & mix$ within each context\n');
-    
-% Make sure we are using 2-tailed t-tests:
-cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
-cfg.design = within_design_1x2;
-cfg.tail = 0;
-cfg.clustertail = 0; % 2 tailed test
-cfg.correcttail = 'prob'; % correct for 2-tailedness
-
-% Switch cost in each context
-[Nat_sw] = ft_timelockstatistics(cfg, data.NatStay{:}, data.NatSwitch{:}); %allSubj_cue_ch_switchCost{:}, allSubj_cue_en_switchCost{:});
-[Art_sw] = ft_timelockstatistics(cfg, data.ArtStay{:}, data.ArtSwitch{:});
-[Bi_sw] = ft_timelockstatistics(cfg, data.BiStay{:}, data.BiSwitch{:}); 
-
-% Mixing cost in each context
-[Nat_mix] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:});
-[Art_mix] = ft_timelockstatistics(cfg, data.ArtSingle{:}, data.ArtStay{:});
-[Bi_mix] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
-
-length(find(Nat_sw.mask))  % not sig
-length(find(Art_sw.mask))  % sig (but did not survive Bonferroni)
-length(find(Bi_sw.mask))   % not sig
-length(find(Nat_mix.mask)) % sig (but did not survive Bonferroni)
-length(find(Art_mix.mask)) % not sig
-length(find(Bi_mix.mask))  % sig (but did not survive Bonferroni)
-
-%save([ResultsFolder_thisrun 'stats_pairwise_minnbchan' mat2str(cfg.minnbchan) '.mat'], 'Nat_sw', 'Art_sw', 'Bi_sw', 'Nat_mix', 'Art_mix', 'Bi_mix');
 
 
 %% Below are from MEG Exp 1
@@ -684,11 +723,9 @@ end
 stat = Main_Context;
 conds_to_plot = 1:9;%[1 2 4 5 7 8];
 
-% load the relevant GA
-if (PLANAR_TRANSFORM)
-    load([ResultsFolder_thisrun 'GA_avg_planar.mat']); % only required if using ft_topoplot
-else
-    load([ResultsFolder_thisrun 'GA_avg.mat']); % only required if using ft_topoplot
+% load the relevant GA (avoid reloading if already exists)
+if ~exist('GA_erf', 'var')
+    load([ResultsFolder_thisrun 'GA_avg.mat']);
 end
 
 % read out the sig channels & time points

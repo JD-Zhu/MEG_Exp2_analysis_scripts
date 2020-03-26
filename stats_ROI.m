@@ -203,7 +203,7 @@ for k = 1:length(ROIs_label)
     cfg.clusterstatistic = 'maxsum';
     %cfg.clusterstatistic = 'wcm'; cfg.wcm_weight = 1;    
 
-    cfg.alpha = 0.1; % report all effects with p < 0.1
+    cfg.alpha = 0.05; % report all effects with p < 0.1
     cfg.numrandomization = 2000; % Rule of thumb: use 500, and double this number if it turns out 
         % that the p-value differs from the critical alpha-level (0.05 or 0.01) by less than 0.02
 
@@ -267,58 +267,20 @@ for k = 1:length(ROIs_label)
     end
     [Main_Ttype.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:}, timelock_Switch{:});
 
-    
-    % UNPACKING main effects & interactions
-    cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
-    cfg.design = within_design_1x2;
-    %cfg.tail = -1; % -1 = left, 1 = right, 0 = 2-tailed
-    %cfg.clustertail = -1; % use left-sided tail, coz I always put the smaller cond first when calling ft_timelockstatistics()
-    % using 1-tailed t-test is generally frowned upon, so we change back to 2-tailed (and correct for it)
-    cfg.tail = 0; % -1 = left, 1 = right, 0 = 2-tailed
-    cfg.clustertail = 0; 
-    cfg.correcttail = 'prob'; % correct for 2-tailedness
-
-    % To unpack the interactions, we compare the sw$ & mix$ for each pair of contexts (i.e. nat_vs_bi, art_vs_bi, nat_vs_art)
-    fprintf('\n\n= Sw$ Interaction - Unpacking (3 t-tests) =\n');
-    fprintf('\n  -> Nat vs Bi');
-    [SwCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_SwCost_Nat{:}, timelock_SwCost_Bi{:});
-    fprintf('\n  -> Art vs Bi');
-    [SwCost_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_SwCost_Art{:}, timelock_SwCost_Bi{:});
-    fprintf('\n  -> Nat vs Art');
-    [SwCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_SwCost_Nat{:}, timelock_SwCost_Art{:});
-    
-    fprintf('\n = Mix$ interaction - Unpacking (3 t-tests) =\n');
-    fprintf('\n  -> Nat vs Bi');
-    [MixCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Bi{:});
-    fprintf('\n  -> Art vs Bi');
-    [MixCost_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_MixCost_Art{:}, timelock_MixCost_Bi{:});
-    fprintf('\n  -> Nat vs Art');
-    [MixCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Art{:});
-
-    % To unpack the main effect of context, we conduct 3 pairwise comparisons
-    fprintf('\n= Main effect of context - Unpacking (3 t-tests) =\n');
-    fprintf('\n  -> Nat vs Bi');
-    [Context_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Bi{:});
-    fprintf('\n  -> Art vs Bi');
-    [Context_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Art{:}, timelock_Bi{:});
-    fprintf('\n  -> Nat vs Art');
-    [Context_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Art{:});
-    
-    % For the main effect of ttype, instead of unpacking it (ie. conducting 3 pairwise comparisons & applying Bonferroni),
+    % Alternatively,
     % we can prob justify testing "switch effect" & "mixing effect" separately (no need to correct for MCP)
-    fprintf('\n= Main effect of ttype - We will unpack Switch & Mix separately =\n');
     fprintf('\nMain effect of switch: (t-test)\n');
     [Switch.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Stay{:}, timelock_Switch{:});
     fprintf('\nMain effect of mix: (t-test)\n');
     [Mix.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Stay{:});
     %fprintf('\nAlso testing single-vs-switch: (t-test)\n');
     %[Rubbish.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Single{:}, timelock_Switch{:});
-
     
+
     % PLANNED PAIRWISE COMPARISONS within each context 
     % (previously known as "SANITY CHECK" - did we find a switch cost in Bivalent context?)
     
-    % Make sure we are using 2-tailed t-tests (see expla above):
+    % Make sure we are using 2-tailed t-tests (see expla below in "UNPACKING main effects & interactions"):
     cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
     cfg.design = within_design_1x2;
     cfg.tail = 0;
@@ -352,12 +314,73 @@ for k = 1:length(ROIs_label)
     fclose(fid);
    
 end
+    
 
-%save([ResultsFolder_ROI_thisrun 'stats_pairwise.mat'], 'stats_pairwise');
+%% UNPACKING main effects & interactions (only those found to be sig in F-tests above, specify the contrast & the ROI in which it was sig)
+cfg.statistic = 'depsamplesT'; % t-test (i.e. for comparing 2 conds)
+cfg.design = within_design_1x2;
+%cfg.tail = -1; % -1 = left, 1 = right, 0 = 2-tailed
+%cfg.clustertail = -1; % use left-sided tail, coz I always put the smaller cond first when calling ft_timelockstatistics()
+% using 1-tailed t-test is generally frowned upon, so we change back to 2-tailed (and correct for it)
+cfg.tail = 0; % -1 = left, 1 = right, 0 = 2-tailed
+cfg.clustertail = 0; 
+cfg.correcttail = 'prob'; % correct for 2-tailedness
+
+% Unpack main effect of context
+stat = Main_Context;
+ROI_name = 'RACC';
+cfg.latency = [0.125 0.150]; % duration of the cluster
+cfg.avgovertime = 'yes';
+
+data = allSubjects_ROIs.(ROI_name); % data for the current ROI
+  
+% run relevant section (during F-test above) to compute these:
+% timelock_Nat, timelock_Art, timelock_Bi
+
+[Context_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Bi{:});
+[Context_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Art{:}, timelock_Bi{:});
+[Context_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Art{:});
+
+length(find(Context_nat_vs_bi.(ROI_name).mask))
+length(find(Context_art_vs_bi.(ROI_name).mask))
+length(find(Context_nat_vs_art.(ROI_name).mask))
+
+
+% We now use avgovertime/avgoverchan to unpack main effects & interactions,
+% so the code below is obsolete.
+%{ 
+% To unpack the interactions, we compare the sw$ & mix$ for each pair of contexts (i.e. nat_vs_bi, art_vs_bi, nat_vs_art)
+fprintf('\n\n= Sw$ Interaction - Unpacking (3 t-tests) =\n');
+fprintf('\n  -> Nat vs Bi');
+[SwCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_SwCost_Nat{:}, timelock_SwCost_Bi{:});
+fprintf('\n  -> Art vs Bi');
+[SwCost_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_SwCost_Art{:}, timelock_SwCost_Bi{:});
+fprintf('\n  -> Nat vs Art');
+[SwCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_SwCost_Nat{:}, timelock_SwCost_Art{:});
+
+fprintf('\n = Mix$ interaction - Unpacking (3 t-tests) =\n');
+fprintf('\n  -> Nat vs Bi');
+[MixCost_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Bi{:});
+fprintf('\n  -> Art vs Bi');
+[MixCost_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_MixCost_Art{:}, timelock_MixCost_Bi{:});
+fprintf('\n  -> Nat vs Art');
+[MixCost_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Art{:});
+
+% To unpack the main effect of context, we conduct 3 pairwise comparisons
+fprintf('\n= Main effect of context - Unpacking (3 t-tests) =\n');
+fprintf('\n  -> Nat vs Bi');
+[Context_nat_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Bi{:});
+fprintf('\n  -> Art vs Bi');
+[Context_art_vs_bi.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Art{:}, timelock_Bi{:});
+fprintf('\n  -> Nat vs Art');
+[Context_nat_vs_art.(ROI_name)] = ft_timelockstatistics(cfg, timelock_Nat{:}, timelock_Art{:});
+%}
+
 %save([ResultsFolder_ROI_thisrun 'stats_Interactions.mat'], 'SwCost_interaction', 'MixCost_interaction');
+%save([ResultsFolder_ROI_thisrun 'stats_MainEffects.mat'], 'Main_Context', 'Main_Ttype', 'Switch', 'Mix');
+%save([ResultsFolder_ROI_thisrun 'stats_pairwise.mat'], 'stats_pairwise');
 %save([ResultsFolder_ROI_thisrun 'stats_Interactions_unpack.mat'], 'SwCost_nat_vs_bi', 'MixCost_nat_vs_bi', 'SwCost_art_vs_bi', 'MixCost_art_vs_bi', 'SwCost_nat_vs_art', 'MixCost_nat_vs_art');
-%save([ResultsFolder_ROI_thisrun 'stats_MainEffects.mat'], 'Main_Context', 'Main_Ttype');
-%save([ResultsFolder_ROI_thisrun 'stats_MainEffects_unpack.mat'], 'Context_nat_vs_bi', 'Context_art_vs_bi', 'Context_nat_vs_art', 'Switch', 'Mix');
+%save([ResultsFolder_ROI_thisrun 'stats_MainEffects_unpack_avgovertime.mat'], 'Context_nat_vs_bi', 'Context_art_vs_bi', 'Context_nat_vs_art');
 
 
 %% Find the effects & plot them
