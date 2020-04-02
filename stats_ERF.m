@@ -586,7 +586,6 @@ effect_target_ttype = length(find(target_ttype.mask))
 
 %load([ResultsFolder_thisrun 'stats.mat']);
 load('lay.mat');
-load([ResultsFolder_thisrun 'GA_avg.mat']); % only required if using ft_topoplot
 
 % use a nice-looking colourmap
 ft_hastoolbox('brewermap', 1); % ensure this toolbox is on the path
@@ -601,7 +600,8 @@ stat = MixCost_interaction; % here we plot the only effect that seems to survive
                   % sensitivity, and allow us to increase the minnbchan to
                   % a reasonable number: 2 (ft tutorial) or 4 (Paul)
 
-%% ft_clusterplot (based on t-values)
+%% ft_clusterplot (plots t-values by default)
+% this is a wrapper around ft_topoplot, automatically extracts info about the cluster
 
 % too much warning, can't see the console output
 ft_warning off 'FieldTrip:ft_clusterplot:ft_topoplotTFR:topoplot_common:ft_selectdata:getdimord:warning_dimord_could_not_be_determined:line681'
@@ -620,9 +620,19 @@ cfg.colormap = cmap;
 
 ft_clusterplot(cfg, stat);
 
+% for some reason, the plots still use old colormap
+% running the following again sometimes updates the plots to new colormap
+ft_hastoolbox('brewermap', 1); % ensure this toolbox is on the path
+cmap = colormap(flipud(brewermap(64, 'RdBu')));
 
-%% ft_topoplot (based on actual erf amplitude) 
+
+%% ft_topoplot (can plot t-values or actual erf amplitude) 
+% need to write everything yourself (ie. pretty much re-implement whats's in ft_clusterplot).
+% if u don't want to do this manually, might be able to set cfg.parameter = GA.avg when calling ft_clusterplot,
+% to make use of the automatic processing provided by ft_clusterplot
 %{
+load([ResultsFolder_thisrun 'GA_avg.mat']);
+
 % first, define the 2 conds to be compared (this time using cross-subject averages, i.e. GA)
 % here we look at main effect of ttype in cue window, so we collapse across langs
 GA_cue_stay = GA_erf.cuechstay;
@@ -715,13 +725,14 @@ for k = 1:length(j)-1; % create one subplot for each time interval
 end  
 %}
 
+
 %% To plot the actual effect (i.e. average ERF of sig channels)
 
 % SELECT which stat to plot & SPECIFY the relevant conds accordingly
-%stat = MixCost_interaction;
-%conds_to_plot = [1 3 4 6 7 9];
-stat = Main_Context;
-conds_to_plot = 1:9;%[1 2 4 5 7 8];
+stat = MixCost_interaction;
+conds_to_plot = [1 3 4 6 7 9];
+%stat = Main_Context;
+%conds_to_plot = 1:9;%[1 2 4 5 7 8];
 
 % load the relevant GA (avoid reloading if already exists)
 if ~exist('GA_erf', 'var')
@@ -738,15 +749,21 @@ end_time = stat.time(sig_samples(end));
 % plot the average ERF over all sig channels
 figure('Name', 'Avg ERF of sig channels');
 cfg        = [];
+cfg.title = ' '; % hide the display of channel names at the top
 cfg.channel = stat.label(sig_chans);
-%cfg.baseline     = ERF_BASELINE; % makes no diff if we've already done baseline correction earlier
+cfg.baseline     = ERF_BASELINE; % makes no diff if we've already done baseline correction earlier
 cfg.graphcolor   = cell2mat(colours(conds_to_plot)); 
 cfg.linestyle    = lineTypes(conds_to_plot);
 cfg.linewidth = 3;
 cellarray = struct2cell(GA_erf);
 ft_singleplotER(cfg, cellarray{conds_to_plot});
 legend(eventnames_real(conds_to_plot), 'Location','northwest', 'FontSize',30);
+
 xlim(PLOT_XLIM);
+xlabel('Seconds');
+ylabel('Tesla');
+set(gca, 'LineWidth',1.5, 'FontSize',22); % set axes properties
+box on; % draw a border around the figure
 
 % create shaded region indicating effect duration
 ylimits = ylim; ylow = ylimits(1); yhigh = ylimits(2);
@@ -758,8 +775,9 @@ patch(x,y,'black', 'FaceAlpha',alpha, 'HandleVisibility','off') % draw the shade
     % (turn off HandleVisibility so it won't show up in the legends)
 ylim(ylimits); % ensure ylim doesn't get expanded
 
-% only plot the GFP if using axial ERF (in the case of planar transformation,
-% the entire timecourse is already +ve, so no need of GFP)
+
+% only plot the GFP if using axial ERF 
+% (in the case of planar transformation, the entire timecourse is already +ve, so no need of GFP)
 if ~PLANAR_TRANSFORM
     % if we want to plot the GFP of these channels, calculate that now
     cfg        = [];
@@ -768,15 +786,22 @@ if ~PLANAR_TRANSFORM
     for j = 1:length(eventnames_real)
         GFP_Interaction.(eventnames_real{j}) = ft_globalmeanfield(cfg, GA_erf.(eventnames_real{j}));
     end
+    
     % plot GFP
     figure('Name', 'GFP of sig channels'); hold on
-    cfg        = [];
+    cfg       = [];
+    cfg.title = ' '; % hide the display of channel names at the top
     cfg.graphcolor   = cell2mat(colours(conds_to_plot)); 
     cfg.linestyle    = lineTypes(conds_to_plot);
     cfg.linewidth = 3;
     ft_singleplotER(cfg, GFP_Interaction.NatStay, GFP_Interaction.NatSingle, GFP_Interaction.ArtStay, GFP_Interaction.ArtSingle, GFP_Interaction.BiStay, GFP_Interaction.BiSingle);
     legend(eventnames_real(conds_to_plot), 'Location','northwest', 'FontSize',30);
+    
     xlim(PLOT_XLIM);
+    xlabel('Seconds');
+    ylabel('Tesla squared');
+    set(gca, 'LineWidth',1.5, 'FontSize',22); % set axes properties
+    box on; % draw a border around the figure
 
     % create shaded region indicating effect duration
     ylimits = ylim; ylow = ylimits(1); yhigh = ylimits(2);

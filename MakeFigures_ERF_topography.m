@@ -36,14 +36,42 @@ load('neighbours.mat');
 
 % SELECT which effect to plot & SPECIFY the effect duration
 stat_output = MixCost_interaction; % 155-200ms (minnbchan = 2); 160-180ms (minnbchan = 3); 165-170ms (minnbchan = 4);
-start_time = 0.165;
-end_time = 0.170;
+start_time = 0.155;
+end_time = 0.200;
 
 % load nice colourmap
 ft_hastoolbox('brewermap', 1);         % ensure this toolbox is on the path
 cmap = colormap(flipud(brewermap(64, 'RdBu')));
 
+
+%% define what contrast you want to plot & compute the GA difference
+% (only need to run this section if plotting topography based on GA, i.e. Opt 1 below)
+
 load([ResultsFolder_thisrun 'GA_avg.mat']); % takes a long time to load
+
+% first, define the 2 conds to be compared
+% choose one of these:
+
+% (a) if you want 3 separate plots (ie. pairwise comparisons, showing mixing effect in Nat, Art & Bi)
+% then modify the following accordingly for the 3 contexts (each time you 
+% need to run the code below again, up to the part where the topoplot is generated)
+GA_1 = GA_erf.NatStay;
+GA_2 = GA_erf.NatSingle;
+
+%{
+% (b) if you want to plot the mixing-effect diff btwn 2 contexts (ie. interaction)
+% e.g. here we plot MixCost_nat_vs_bi
+GA_1 = GA_erf.BiStay;
+GA_1.avg = GA_erf.BiStay.avg - GA_erf.BiSingle.avg; % mixing cost in Bi
+GA_2 = GA_erf.NatStay;
+GA_2.avg = GA_erf.NatStay.avg - GA_erf.NatSingle.avg; % mixing cost in Nat
+%}
+
+% then, calc the diff btwn the 2 conds
+cfg  = [];
+cfg.operation = 'subtract';
+cfg.parameter = 'avg';
+timelock = ft_math(cfg, GA_1, GA_2);
 
 
 %% plot topography for axial gradiometers
@@ -53,15 +81,15 @@ cfg.layout            = lay;
 cfg.colormap          = cmap;
 cfg.colorbar          = 'yes'; % shows the scales
 %cfg.colorbar         = 'EastOutside';
-%cfg.zlim              = 'maxabs'; % set the scaling
+%cfg.zlim              = [0 10]; %'maxabs'; % set the scaling
 
 cfg.xlim = [start_time end_time]; % duration of the effect (as reported by ft_clusterplot)
                           % topography will be averaged over this interval
 
-cfg.highlight         = 'on'; % highlight significant channels
+cfg.highlight       = 'on'; % highlight significant channels
 cfg.highlightsymbol = '.';
-cfg.highlightsize = 26;
-cfg.highlightcolor = 'w';
+cfg.highlightsize   = 26;
+cfg.highlightcolor  = 'w';
 
 
 % which channels to highlight? 
@@ -96,32 +124,29 @@ cfg.comment           = 'no';
 cfg.gridscale         = 512;
 cfg.marker            = 'off'; % show the location of all channels?
 
-cfg.parameter = 'stat'; % what field (in the stats output) to plot, e.g. selecting 'stat' will plot t-values / F-values
 
+% Opt 1: plot topography based on actual erf amplitude (i.e. GA)
+%cfg.parameter = 'avg'; 
+%ft_topoplotER(cfg, timelock);
+
+% Opt 2: plot topography based on F-values in the stat output
+cfg.parameter = 'stat'; % what field to plot, e.g. selecting 'stat' will plot t-values / F-values
 ft_topoplotER(cfg, stat_output);
+
 set(gca,'fontsize',22); % set colorbar fontsize
 %title(gca, 'F-values');
 
 
 %% transform into planar gradient
 
-% Opt 1: plot topography based on actual erf amplitude
+% Opt 1: planar transformation on actual erf amplitude
 
-% first, define the 2 conds to be compared:
-% here we look at main effect of lang in target window
-GA_en = GA_erf.targetenstay;
-GA_en.avg = (GA_erf.targetenstay.avg + GA_erf.targetenswitch.avg) / 2;
-GA_ch = GA_erf.targetchstay;
-GA_ch.avg = (GA_erf.targetchstay.avg + GA_erf.targetchswitch.avg) / 2;
-
-% then, calc the diff btwn the 2 conds
-cfg  = [];
-cfg.operation = 'subtract';
-cfg.parameter = 'avg';
-timelock = ft_math(cfg, GA_en, GA_ch);
+%TODO% apply planar transformation on the GA computed above.
+%Q: is it valid to transform the GA diff? or need to transform each GA, then calc the diff again?
+% or even need to do transformation on each subject's ERF first, then compute GA and then GA diff?
 
 
-% Opt 2: plot topography based on F-values in the stat output <- Q: is it even valid to perform planar transformation on F-values?
+% Opt 2: planar transformation on F-values in stat output <-- is this even valid??
 %{
 % make a fake GA_erf structure, then plug in the F-values from the stat output
 timelock = GA_erf.NatStay; % copy the GA structure from anywhere
