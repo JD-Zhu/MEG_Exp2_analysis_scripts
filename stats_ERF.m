@@ -244,8 +244,8 @@ fprintf('\n= STATS: CLUSTER-BASED PERMUTATION TESTS =\n');
 
 cfg = [];
 cfg.channel   = {'all', '-AG101', '-AG122', '-AG007', '-AG103'}; % remove noisy sensors (see above)
-%load('neighbours_tri.mat'); % obtained using 'trigangulation' method in ft_prepare_neighbour
-load('neighbours_dist5.mat'); % obtained using 'distance' method, with a distance threshold of 5 (default is 4)
+load('neighbours_tri.mat'); % obtained using 'trigangulation' method in ft_prepare_neighbour
+%load('neighbours_dist6.mat'); % obtained using 'distance' method, with a distance threshold of 6 (default is 4)
 cfg.neighbours = neighbours;  % same as defined for the between-trials experiment
 
 % can choose diff time windows to analyse for cue epochs & target epochs

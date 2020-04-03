@@ -122,7 +122,7 @@ time_index = round(time_point / 5 + 1); % index of the time point you want, roun
 cfg.style             = 'straight'; % no contour lines, only the colour gradients
 cfg.comment           = 'no';
 cfg.gridscale         = 512;
-cfg.marker            = 'off'; % show the location of all channels?
+cfg.marker            = 'on'; % show the location of all channels?
 
 
 % Opt 1: plot topography based on actual erf amplitude (i.e. GA)
