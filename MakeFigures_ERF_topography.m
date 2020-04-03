@@ -30,14 +30,13 @@ run_name = 'TSPCA10000_3'; % this should be a folder name inside the "Results_ER
 ResultsFolder_thisrun = [ResultsFolder run_name '\\STATS_axial###\\']; % ERF results for all subjects
 
 % load the results
-load([ResultsFolder_thisrun 'stats_Interactions_minnbchan2.mat']);
+load([ResultsFolder_thisrun 'stats_Interactions_minnbchan4.mat']);
 load('lay.mat');
-load('neighbours.mat');
 
 % SELECT which effect to plot & SPECIFY the effect duration
 stat_output = MixCost_interaction; % 155-200ms (minnbchan = 2); 160-180ms (minnbchan = 3); 165-170ms (minnbchan = 4);
-start_time = 0.155;
-end_time = 0.200;
+start_time = 0.175;
+end_time = 0.175;
 
 % load nice colourmap
 ft_hastoolbox('brewermap', 1);         % ensure this toolbox is on the path
@@ -164,6 +163,7 @@ timelock.grad = stat_output.grad;
 cfg                 = [];
 cfg.feedback        = 'yes';
 cfg.method          = 'template';
+load('neighbours_tri.mat');
 cfg.neighbours      = neighbours;
 
 cfg.planarmethod    = 'sincos';
