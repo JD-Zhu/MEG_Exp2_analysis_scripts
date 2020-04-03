@@ -244,7 +244,7 @@ fprintf('\n= STATS: CLUSTER-BASED PERMUTATION TESTS =\n');
 
 cfg = [];
 cfg.channel   = {'all', '-AG101', '-AG122', '-AG007', '-AG103'}; % remove noisy sensors (see above)
-load('neighbours.mat'); % this is the same for all subjects (even same across experiments). So just prepare once & save, then load here
+load('neighbours_dist5.mat'); % this is the same for all subjects (even same across experiments). So just load the prepared file.
 cfg.neighbours = neighbours;  % same as defined for the between-trials experiment
 
 % can choose diff time windows to analyse for cue epochs & target epochs
