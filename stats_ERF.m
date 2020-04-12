@@ -428,11 +428,6 @@ cfg.correcttail = 'prob'; % correct for 2-tailedness
 % Unpack mix$ interaction
 stat = MixCost_interaction;
 
-% run relevant code (should have been run during F-test above) to compute these:
-% timelock_MixCost_Nat, timelock_MixCost_Art, timelock_MixCost_Bi
-[timelock_MixCost_Nat, timelock_MixCost_Bi] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.BiSingle, data.BiStay);
-[timelock_MixCost_Art, ~] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtSingle, data.ArtStay, data.BiSingle, data.BiStay);
-
 % read out the sensors in the cluster
 [row,col] = find(stat.mask); 
 sig_chans = unique(row)';
@@ -442,19 +437,35 @@ cfg.channel = stat.label(sig_chans);
 cfg.avgoverchan = 'yes'; 
 cfg.minnbchan = 0;      % if avgoverchan = 'yes', then set this to 0, otherwise you cannot 
                         % possibly form a cluster (because there is only one "channel")
-% Also avg over time
+% Also take avg over time
 cfg.latency = [0.155 0.200]; % duration of the cluster
 cfg.avgovertime = 'yes';
 
+
+% run relevant code (should have been run during F-test above) to compute these:
+% timelock_MixCost_Nat, timelock_MixCost_Art, timelock_MixCost_Bi
+[timelock_MixCost_Nat, timelock_MixCost_Bi] = combine_conds_for_T_test('fieldtrip', 'interaction', data.NatSingle, data.NatStay, data.BiSingle, data.BiStay);
+[timelock_MixCost_Art, ~] = combine_conds_for_T_test('fieldtrip', 'interaction', data.ArtSingle, data.ArtStay, data.BiSingle, data.BiStay);
+
+% test the 2x2 contrasts
 [MixCost_nat_vs_bi] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Bi{:});
 [MixCost_art_vs_bi] = ft_timelockstatistics(cfg, timelock_MixCost_Art{:}, timelock_MixCost_Bi{:});
 [MixCost_nat_vs_art] = ft_timelockstatistics(cfg, timelock_MixCost_Nat{:}, timelock_MixCost_Art{:});
 
-length(find(MixCost_nat_vs_bi.mask))
-length(find(MixCost_art_vs_bi.mask))
-length(find(MixCost_nat_vs_art.mask))
+length(find(MixCost_nat_vs_bi.mask))  % sig
+length(find(MixCost_art_vs_bi.mask))  % not sig
+length(find(MixCost_nat_vs_art.mask)) % sig
 
-%save([ResultsFolder_thisrun 'stats_Interactions_minnbchan' mat2str(cfg.minnbchan) '_unpack_avgovertime.mat'], 'MixCost_nat_vs_bi', 'MixCost_art_vs_bi', 'MixCost_nat_vs_art');
+% test the pairwise contrast (single vs stay) in each context
+[Nat_mix_posthoc] = ft_timelockstatistics(cfg, data.NatSingle{:}, data.NatStay{:});
+[Art_mix_posthoc] = ft_timelockstatistics(cfg, data.ArtSingle{:}, data.ArtStay{:});
+[Bi_mix_posthoc] = ft_timelockstatistics(cfg, data.BiSingle{:}, data.BiStay{:}); 
+
+length(find(Nat_mix_posthoc.mask)) % sig
+length(find(Art_mix_posthoc.mask)) % not sig
+length(find(Bi_mix_posthoc.mask))  % sig
+
+%save([ResultsFolder_thisrun 'stats_Interactions_minnbchan' mat2str(cfg.minnbchan) '_unpack_avgovertime.mat'], 'MixCost_nat_vs_bi', 'MixCost_art_vs_bi', 'MixCost_nat_vs_art', 'Nat_mix_posthoc', 'Art_mix_posthoc', 'Bi_mix_posthoc');
 
 % We now use avgovertime/avgoverchan to unpack main effects & interactions,
 % so the code below is obsolete.
